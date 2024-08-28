@@ -19,11 +19,13 @@ class EDA:
         self.Chip_BP_Signals_layer = []  # Cropped GDS file seperated to signals and layers
         self.Chip_BP_Signals_layer_unique = []
         self.Chip_BP_Signals_layer_unique2 = []
+        self.Chip_BP_Signals_in_Layer = []
         self.BP = [] # Polygon used for cropping the original GDS file
         self.Metal_Layers = []
         self.Via_Layers = []
         self.Signals_for_eda = []
         self.resolution = 100
+        self.Gausian_Kernal_size = 11 #Must be an even number
     def Set_BP(self,poly):
         self.BP=poly
     def Set_Metal_Layers(self,metal_layers):
@@ -288,14 +290,37 @@ class EDA:
                     #             cell.name=str(unique_signals)
                     chip_r.add(signal_cell)
         self.Chip_BP_Signals = chip_r
+    def Slice_GDS_Signal_in_Layer(self):
+        cells_keys = list(self.Chip_BP_Signals_layer_unique2.cells.keys())
+        chip_r = gdspy.GdsLibrary()
+        cells_keys.remove('check')
+
+        for layer in self.Metal_Layers:
+            layer_cell = gdspy.Cell('L-' + str(layer))
+            for key in cells_keys:
+                if key == 'top_metal':
+                    pass
+                elif (len(eval(key)) > 2):
+                    layer_num, unique_signals, _ = eval(key)
+                    if (layer_num == layer):
+                        poly = self.Chip_BP_Signals_layer_unique2.cells[key].get_polygons()
+                        for p in poly:
+                            layer_cell.add(gdspy.Polygon(p, layer=unique_signals))
+            chip_r.add(layer_cell)
+        chip_r.add(self.Chip_BP_Signals_layer_unique.cells['top_metal'])
+        chip_r.write_gds('GDS_Signals_layers.gds')
+        self.Chip_BP_Signals_in_Layer = chip_r
+
     def Slice_Signals(self, save=False):
         self.Slice_GDS_Signal_Layer()
         self.Slice_GDS_Signal_unique()
         self.Slice_GDS_Signal_Layer_Unique()
         self.Slice_GDS_Signal()
+        self.Slice_GDS_Signal_in_Layer()
         if (save):
             self.Chip_BP_Signals.write_gds('GDS_Signals_global.gds')
             self.Chip_BP_Signals_layer_unique2.write_gds('GDS_Signals_layers.gds')
+            self.Chip_BP_Signals_in_Layer.write_gds('GDS_Signals_in_Layers.gds')
     def Build_Reward_mask(self,signal_num):
         print({f'signal number is {signal_num}'})
         chip_signals = self.Chip_BP_Signals_layer_unique2
@@ -371,7 +396,10 @@ class EDA:
                     for i in range(len(self.Metal_Layers)):
                         if (self.Metal_Layers[i] == layer):
                             cv2.fillPoly(mask_cost_list[i], pts=[ver], color=r)
-        self.cost_mask = mask_cost_list
+        self.cost_mask = list()
+        for i in range(len(mask_cost_list)):
+            self.cost_mask.append(cv2.GaussianBlur(mask_cost_list[i], (self.Gausian_Kernal_size, self.Gausian_Kernal_size), 0))
+        # self.cost_mask = mask_cost_list
     def plot_results(self,X,w):
         x = list()
         y = list()
@@ -401,11 +429,19 @@ class EDA:
                      [x2_g + r, y2_g - r],
                      [x2_g - r, y2_g - r]]
         chip_r = gdspy.GdsLibrary(infile='GDS_Signals_global.gds')
-        chip_r.cells['0'].add(gdspy.Polygon(res_poly1, layer=80, datatype=555))
-        chip_r.cells['5'].add(gdspy.Polygon(res_poly2, layer=80, datatype=555))
-        chip_r.cells['top_metal'].add(gdspy.Polygon(res_poly1, layer=80, datatype=555))
-        chip_r.cells['top_metal'].add(gdspy.Polygon(res_poly2, layer=80, datatype=555))
+        chip_r.cells['0'].add(gdspy.Polygon(res_poly1, layer=254))
+        chip_r.cells['5'].add(gdspy.Polygon(res_poly2, layer=255))
+        chip_r.cells['top_metal'].add(gdspy.Polygon(res_poly1, layer=254))
+        chip_r.cells['top_metal'].add(gdspy.Polygon(res_poly2, layer=255))
         chip_r.write_gds('GDS_Signals_global_results.gds')
+        chip_r = gdspy.GdsLibrary(infile='GDS_Signals_in_Layers.gds')
+        L1 = 'L-' + str(int(l1))
+        L2 = 'L-' + str(int(l2))
+        chip_r.cells[L1].add(gdspy.Polygon(res_poly1, layer=254))
+        chip_r.cells[L2].add(gdspy.Polygon(res_poly2, layer=255))
+        chip_r.cells['top_metal'].add(gdspy.Polygon(res_poly1, layer=254))
+        chip_r.cells['top_metal'].add(gdspy.Polygon(res_poly2, layer=255))
+        chip_r.write_gds('GDS_Signals_in_Layers_results.gds')
 
 
 
