@@ -442,6 +442,95 @@ class EDA:
         chip_r.cells['top_metal'].add(gdspy.Polygon(res_poly1, layer=254))
         chip_r.cells['top_metal'].add(gdspy.Polygon(res_poly2, layer=255))
         chip_r.write_gds('GDS_Signals_in_Layers_results.gds')
+    def Sample_from_poly(self,P,x_g,y_g,B):
+        x = P[:, 0]
+        y = P[:, 1]
+        x_min = min(x)
+        x_max = max(x)
+        y_min = min(y)
+        y_max = max(y)
+        x = (np.random.uniform(x_min, x_max)-x_g)*self.resolution
+        y = (np.random.uniform(y_min, y_max)-y_g)*self.resolution
+        if(x<B[0,0]):
+            x=B[0,0]
+        elif(x>B[0,1]):
+            x=B[0,1]
+        if (y < B[1, 0]):
+            y = B[1, 0]
+        elif (y > B[1, 1]):
+            y = B[1, 1]
+        return x, y
+    def Generate_Initial_Population(self,Num,bounds):
+        x = list()
+        y = list()
+        for xy in self.BP:
+            x.append(xy[0])
+            y.append(xy[1])
+        x_g = min(x)
+        y_g = min(y)
+        keys = list(self.Chip_BP_Signals_layer_unique2.cells.keys())
+        # Elements for the first signal
+        Sample_in_layer = np.zeros(len(self.Metal_Layers), dtype=bool)
+        for i in range(len(self.Metal_Layers)):
+            test_key = str((self.Metal_Layers[i], self.Signals_for_eda[0], 0))
+            if test_key in keys:
+                Sample_in_layer[i] = True
+        Sample_in_layer = Sample_in_layer * int(Num / sum(Sample_in_layer))
+        print(Sample_in_layer)
+        Samples = list()  # np.array(size=(Num,3),dtype=float)
+        for i in range(len(self.Metal_Layers)):
+            l = self.Metal_Layers[i]
+            if Sample_in_layer[i] > 0:
+                test_key = str((self.Metal_Layers[i], self.Signals_for_eda[0], 0))
+                Poly = self.Chip_BP_Signals_layer_unique2.cells[test_key].get_polygons()
+                p = len(Poly)
+                for j in range(Sample_in_layer[i]):
+                    h = np.random.randint(p)
+                    # print('layer={}, poly_num={} of {}'.format(l, h, p))
+                    x, y = self.Sample_from_poly(Poly[h],x_g, y_g ,bounds[0:2,:] )
+                    Samples.append([x, y, l])
+        for i in range (Num-len(Samples)):
+            x = np.random.uniform(bounds[0,0],bounds[0,1])
+            y = np.random.uniform(bounds[1,0],bounds[1,1])
+            l = np.random.randint(bounds[2,0],bounds[2,1])
+            Samples.append([x, y, l])
+        S1 = np.array(Samples)
+        arr = np.arange(Num)
+        np.random.shuffle(arr)
+        S1 = S1 [arr,:]
+
+        # Elements for the Second signal
+        Sample_in_layer = np.zeros(len(self.Metal_Layers), dtype=bool)
+        for i in range(len(self.Metal_Layers)):
+            test_key = str((self.Metal_Layers[i], self.Signals_for_eda[1], 0))
+            if test_key in keys:
+                Sample_in_layer[i] = True
+        Sample_in_layer = Sample_in_layer * int(Num / sum(Sample_in_layer))
+        print(Sample_in_layer)
+        Samples = list()  # np.array(size=(Num,3),dtype=float)
+        for i in range(len(self.Metal_Layers)):
+            l = self.Metal_Layers[i]
+            if Sample_in_layer[i] > 0:
+                test_key = str((self.Metal_Layers[i], self.Signals_for_eda[1], 0))
+                Poly = self.Chip_BP_Signals_layer_unique2.cells[test_key].get_polygons()
+                p = len(Poly)
+                for j in range(Sample_in_layer[i]):
+                    h = np.random.randint(p)
+                    # print('layer={}, poly_num={} of {}'.format(l, h, p))
+                    x, y = self.Sample_from_poly(Poly[h],x_g, y_g,bounds[0:2,:])
+                    Samples.append([x, y, l])
+        for i in range(Num - len(Samples)):
+            x = np.random.uniform(bounds[0, 0], bounds[0, 1])
+            y = np.random.uniform(bounds[1, 0], bounds[1, 1])
+            l = np.random.randint(bounds[2, 0], bounds[2, 1])
+            Samples.append([x, y, l])
+        S2 = np.array(Samples)
+        arr = np.arange(Num)
+        np.random.shuffle(arr)
+        S2 = S2[arr, :]
+        S=np.concatenate((S1,S2),axis=1)
+        return S
+
 
 
 
