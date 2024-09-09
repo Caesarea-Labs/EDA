@@ -1,3 +1,6 @@
+import time
+from functools import wraps
+
 import numpy as np
 import gdspy
 import os
@@ -9,6 +12,8 @@ import tqdm
 import matplotlib.image
 from geneticalgorithm import geneticalgorithm as ga
 from slice_utilities import poly_intersection, slice_gds, cost_reward
+
+
 
 class EDA:
     def __init__(self, file,top_cell):
@@ -50,21 +55,33 @@ class EDA:
     def Slice_GDS(self):
         # Set the cell needed to slicing
         cell = self.Chip.cells[self.Top_Cell_Name]
-        # Extract polygons grouped by layer and datatype
-        polygons_by_layer = cell.get_polygons(by_spec=True)
+
+        @measure_time
+        def get_polygons():
+            # Extract polygons grouped by layer and datatype
+            return cell.get_polygons(by_spec=True)
+
+        polygons_by_layer = get_polygons()
 
         # Initialize Filter polygons by bounding box
         filtered_polygons = {}
         # Build polygon for GDS slicing
         test_poly = Polygon(self.BP)
-        for (layer, datatype), polygons in polygons_by_layer.items():
-            for polygon in polygons:
-                res, poly = poly_intersection(test_poly, Polygon(polygon))
-                if res:
-                    if (layer, datatype) not in filtered_polygons:
-                        filtered_polygons[(layer, datatype)] = []
-                    for p in poly:
-                        filtered_polygons[(layer, datatype)].append(p)
+
+        @measure_time
+        def intersect_polygons():
+            for (layer, datatype), polygons in polygons_by_layer.items():
+                for polygon in polygons:
+                    res, poly = poly_intersection(test_poly, Polygon(polygon))
+                    if res:
+                        if (layer, datatype) not in filtered_polygons:
+                            filtered_polygons[(layer, datatype)] = []
+                        for p in poly:
+                            filtered_polygons[(layer, datatype)].append(p)
+
+        intersect_polygons()
+
+
 
         # Print the number of polygons found in each layer
         for (layer, datatype), polygons in filtered_polygons.items():
@@ -91,7 +108,7 @@ class EDA:
         #Get the keys for the cropped chip
         cells_keys = list(self.Chip_BP.cells.keys())
         cells_keys.remove('top')
-        top_cell = gdspy.Cell('top_metal')
+        top_cell = gdspy.Cell('top_metal', exclude_from_current=True)
         signal_num = 0
         chip_r = gdspy.GdsLibrary()
         for key in cells_keys:
@@ -546,20 +563,13 @@ class EDA:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+def measure_time(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        print(f"Executing {func.__name__}()...")
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        print(f"{func.__name__}() completed {end_time - start_time:.4f} in seconds.")
+        return result
+    return wrapper
