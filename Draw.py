@@ -27,7 +27,9 @@ class Polygon3D:
 def plot_layout(layout: Layout):
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111, projection='3d')
-    ax.set_zlim(0, 6)
+    ax.set_zlim(0, 10)
+    ax.set_ylim(0,10)
+    ax.set_xlim(0,10)
 
     def draw_shape(shape: Polygon3D):
         x_coords = [point.x for point in shape.vertices]  # Get the x coordinates
@@ -76,37 +78,39 @@ def plot_layout(layout: Layout):
     ax.set_title('3D Shape Layout')
     plt.show()
 
+if __name__ == '__main__':
+    triangle = MetalPolygon(vertices=[Point2D(0, 0), Point2D(2, 0), Point2D(1, 2)], layer=2)
+    square = MetalPolygon(vertices=[Point2D(3, 3), Point2D(3, 7), Point2D(7, 7), Point2D(7, 3)], layer=0)
+    s_shape = MetalPolygon(
+        vertices=[
+            Point2D(2, 2),
+            Point2D(2, 4),
+            Point2D(0, 4),
+            Point2D(0, 7),
+            Point2D(1, 7),
+            Point2D(1, 5),
+            Point2D(3, 5),
+            Point2D(3, 2)
+        ], layer=1
+    )
+    l_shape = MetalPolygon(
+        vertices=[
+            Point2D(1, 3),
+            Point2D(1, 4),
+            Point2D(4, 4),
+            Point2D(4, 7),
+            Point2D(5, 7),
+            Point2D(5, 3)
+        ], layer=3
+    )
 
-triangle = MetalPolygon(vertices=[Point2D(0, 0), Point2D(2, 0), Point2D(1, 2)], layer=2)
-square = MetalPolygon(vertices=[Point2D(3, 3), Point2D(3, 7), Point2D(7, 7), Point2D(7, 3)], layer=0)
-s_shape = MetalPolygon(
-    vertices=[
-        Point2D(2, 2),
-        Point2D(2, 4),
-        Point2D(0, 4),
-        Point2D(0, 7),
-        Point2D(1, 7),
-        Point2D(1, 5),
-        Point2D(3, 5),
-        Point2D(3, 2)
-    ], layer=1
-)
-l_shape = MetalPolygon(
-    vertices=[
-        Point2D(1, 3),
-        Point2D(1, 4),
-        Point2D(4, 4),
-        Point2D(4, 7),
-        Point2D(5, 7),
-        Point2D(5, 3)
-    ], layer=3
-)
+    connection = Via(
+        bottomLayer=1,
+        topLayer=3,
+        rect=Rect2D(x_start=2, x_end=3, y_start=3, y_end=4)
+    )
 
-connection = Via(
-    bottomLayer=1,
-    topLayer=3,
-    rect=Rect2D(x_start=2, x_end=3, y_start=3, y_end=4)
-)
+    layout = Layout([triangle, square, s_shape, l_shape], [connection])
+    plot_layout(layout)
 
-layout = Layout([triangle, square, s_shape, l_shape], [connection])
-plot_layout(layout)
+

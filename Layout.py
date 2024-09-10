@@ -13,7 +13,11 @@ class Rect2D:
     y_start: int
     y_end: int
 
+
     def vertices(self) -> list[Point2D]:
+        """
+        Returns the 4 vertices at the edges of the rectangle
+        """
         return [Point2D(self.x_start, self.y_start), Point2D(self.x_end, self.y_start), Point2D(self.x_end, self.y_end), Point2D(self.x_start, self.y_end)]
 
 @dataclass

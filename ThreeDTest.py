@@ -32,7 +32,7 @@ class Layout3D:
         ax = fig.add_subplot(111, projection='3d')
 
         for shape in self.shapes:
-            vertices = [(v.x, v.y, v.z) for v in shape.vertices]  # Convert to tuples of (x, y, z)
+            vertices = [(v.x, v.y, v.z) for v in shape.s_shape]  # Convert to tuples of (x, y, z)
 
             for face in shape.faces:
                 # Get the vertices of each face
