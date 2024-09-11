@@ -6,6 +6,18 @@ class Point2D:
     x: int
     y: int
 
+    def __iter__(self):
+        return iter((self.x, self.y))
+
+@dataclass
+class Point2DFloat:
+    x: float
+    y: float
+
+    def __iter__(self):
+        return iter((self.x, self.y))
+
+
 @dataclass
 class Rect2D:
     x_start: int
@@ -33,6 +45,14 @@ class MetalPolygon:
     """
     vertices: list[Point2D]
 
+    signal_index: int
+    """
+    A number binding this metal and all metals connected to it. 
+    When an electrical signal flow through a metal, the same signal flows through all metals with the same signal index.
+    """
+    name: str
+    """String identifying the metal"""
+
 @dataclass
 class Via:
     """
@@ -42,6 +62,7 @@ class Via:
     bottomLayer: int
     topLayer: int
     rect: Rect2D
+    name: str = "Via"
 
 
 @dataclass

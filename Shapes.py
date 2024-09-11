@@ -1,103 +1,147 @@
 from dataclasses import dataclass
 
-from Layout import Point2D, MetalPolygon
+from Layout import Point2D, MetalPolygon, Point2DFloat
 
 
 @dataclass
 class Shape2D:
     """Represents a 2D shape with a name. Has many utility methods for transforming the shape"""
     vertices: list[Point2D]
+    shape_type: str
+    center: Point2DFloat
     name: str
 
-    def layer(self, layer: int) -> MetalPolygon:
-        return MetalPolygon(vertices=self.vertices, layer=layer)
+    def named(self, name: str) -> 'Shape2D':
+        return Shape2D(shape_type=self.shape_type, vertices=self.vertices, center=self.center, name=name)
 
-    # def thickness(self, thickness: int) -> 'Shape2D':
-    #     """Makes the shape as wide as the given thickness"""
-    #     pass
-    #     # TODO
+    def with_vertices(self, vertices: list[Point2D]) -> 'Shape2D':
+        return Shape2D(shape_type=self.shape_type, vertices=vertices, center=self.center, name=self.name)
 
-    def rotate(self, right_angle_rotations: int) -> 'Shape2D':
-        """Rotates the shape by 90 degrees, the amount of times specified by right_angle_rotations.
-         So right_angle_rotations should be 1 for 90 degrees, 2 for 180 degrees, 3 for 270 degrees."""
+    def with_vertices_and_center(self, vertices: list[Point2D], new_center: Point2DFloat) -> 'Shape2D':
+        return Shape2D(shape_type=self.shape_type, vertices=vertices, center=new_center, name=self.name)
+
+    def metal(self, layer: int, signal_index: int = 0) -> MetalPolygon:
+        return MetalPolygon(vertices=self.vertices, layer=layer, signal_index=signal_index, name=self.name)
+
+    def rotate(self, angle: int) -> 'Shape2D':
+        """Rotates the shape by multiples of 90 degrees."""
+
+        if angle == 0 or angle == 360:
+            return self
+        else:
+            cx = self.center.x
+            cy = self.center.y
+
+            # Step 2: Apply the appropriate rotation based on the angle
+            if angle == 90:
+                return self.with_vertices([Point2D(cx - (y - cy), cy + (x - cx)) for x, y in self.vertices])
+            elif angle == 180:
+                return self.with_vertices([Point2D(2 * cx - x, 2 * cy - y) for x, y in self.vertices])
+            elif angle == 270:
+                return self.with_vertices([Point2D(cx + (y - cy), cy - (x - cx)) for x, y in self.vertices])
+            else:
+                raise ValueError("Angle must be 90, 180, or 270 degrees")
         pass
-        # TODO
 
     def translate(self, translate_x: int, translate_y: int) -> 'Shape2D':
         """Moves all vertices by the given x and y translation values."""
-        pass
-        # TODO
+        return self.with_vertices_and_center(
+            [Point2D(x + translate_x, y + translate_y) for (x, y) in self.vertices],
+            new_center=Point2DFloat(self.center.x + translate_x, self.center.y + translate_y)
+        )
+
+    def mirror_horizontal(self):
+        """Mirrors the shape along the X axis"""
+        mirrored = [Point2D(x, 2 * self.center.y - y) for x, y in self.vertices]
+
+        return self.with_vertices(mirrored)
+
+    def mirror_vertical(self):
+        """Mirrors the shape along the X axis"""
+        mirrored = [Point2D(2 * self.center.x - x, y) for x, y in self.vertices]
+
+        return self.with_vertices(mirrored)
 
 
-def buildShape(name: str, pairs: list[(int, int)]) -> Shape2D:
-    return Shape2D(name=name, vertices=[Point2D(x, y) for x, y in pairs])
+def build_shape(type_name: str, center: Point2DFloat, pairs: list[(int, int)], name: str) -> Shape2D:
+    return Shape2D(shape_type=type_name, vertices=[Point2D(x, y) for x, y in pairs], center=center, name=name)
 
-def s_shape(height: int, width: int, thickness: int) -> Shape2D:
-    # TODO
-    pass
 
-def lamed_shape(height: int, width: int, thickness: int) -> Shape2D:
-    # TODO
-    pass
+def s_shape(x_spacing: int, y_spacing: int, x_thickness: int, y_thickness: int, name: str = "Shape") -> Shape2D:
+    return build_shape(
+        "S",
+        center=Point2DFloat((x_thickness + x_spacing) / 2, (y_thickness + y_spacing) / 2),
+        pairs=[
+            (0, 0),
+            (0, y_thickness),
+            (x_thickness + x_spacing, y_thickness),
+            (x_thickness + x_spacing, y_thickness + y_spacing),
+            (0, y_thickness + y_spacing),
+            (0, 3 * y_thickness + y_spacing * 2),
+            (2 * x_thickness + x_spacing, 3 * y_thickness + y_spacing * 2),
+            (2 * x_thickness + x_spacing, 2 * y_thickness + y_spacing * 2),
+            (x_thickness, 2 * y_thickness + y_spacing * 2),
+            (x_thickness, 2 * y_thickness + y_spacing),
+            (2 * x_thickness + x_spacing, 2 * y_thickness + y_spacing),
+            (2 * x_thickness + x_spacing, 0)
+        ],
+        name=name
+    )
 
-def L_shape(height: int, width: int, thickness: int) -> Shape2D:
-    # TODO
-    pass
 
-def rect_shape(height: int, width: int) -> Shape2D:
-    # TODO
-    pass
+def lamed_shape(x_spacing: int, y_spacing: int, x_thickness: int, y_thickness: int, name: str = "Shape") -> Shape2D:
+    return build_shape(
+        "lamed",
+        center=Point2DFloat((x_thickness + x_spacing) / 2, (y_thickness + y_spacing) / 2),
+        pairs=[
+            (0, 0),
+            (x_thickness, 0),
+            (x_thickness, y_spacing),
+            (x_thickness * 2 + x_spacing, y_spacing),
+            (x_thickness * 2 + x_spacing, y_spacing * 2 + y_thickness),
+            (x_thickness + x_spacing, y_spacing * 2 + y_thickness),
+            (x_thickness + x_spacing, y_spacing + y_thickness),
+            (0, y_spacing + y_thickness)
+        ],
+        name=name
+    )
 
-s_shape = buildShape(
-    "S",
-    [
-        (0, 0),
-        (0, 1),
-        (2, 1),
-        (2, 2),
-        (0, 2),
-        (0, 5),
-        (3, 5),
-        (3, 4),
-        (1, 4),
-        (1, 3),
-        (3, 3),
-        (3, 0)
-    ]
-)
 
-L_shape = buildShape(
-    "L",
-    [
-        (0, 0),
-        (3, 0),
-        (3, 1),
-        (1, 1),
-        (1, 3),
-        (0, 3)
-    ]
-)
+def L_shape(x_spacing: int, y_spacing: int, x_thickness: int, y_thickness, name: str = "Shape") -> Shape2D:
+    return build_shape(
+        "L",
+        Point2DFloat((x_thickness + x_spacing) / 2, (y_thickness + y_spacing) / 2),
+        [
+            (0, 0),
+            (x_spacing + x_thickness, 0),
+            (x_spacing + x_thickness, y_thickness),
+            (x_thickness, y_thickness),
+            (x_thickness, y_spacing + y_thickness),
+            (0, y_spacing + y_thickness)
+        ],
+        name=name
+    )
 
-lamed_shape = buildShape(
-    "lamed",
-    [
-        (0, 0),
-        (1, 0),
-        (1, 2),
-        (3, 2),
-        (3, 5),
-        (2, 5),
-        (2, 3),
-        (0, 3)
-    ]
-)
 
-rectangle_shape = buildShape(
-    "rectangle",
-    [
-        (0, 0),
-        (1,0),
-        (1,2),
-        (0,2)
-    ]
-)
+def rect_shape(width: int, height: int, name: str = "Shape") -> Shape2D:
+    return build_shape(
+        type_name="rect",
+        center=Point2DFloat(width / 2, height / 2),
+        pairs=[
+            (0, 0),
+            (width, 0),
+            (width, height),
+            (0, height)
+        ],
+        name=name
+    )
+
+# rectangle_shape = buildShape(
+#     "rectangle",
+#     [
+#         (0, 0),
+#         (1, 0),
+#         (1, 2),
+#         (0, 2)
+#     ]
+# )

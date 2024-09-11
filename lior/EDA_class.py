@@ -127,7 +127,7 @@ class EDA:
             if layer in self.Via_Layers:
                 cell = self.Chip_BP.cells[key]
                 name = str([eval(key)[0],eval(key)[1]])
-                cell.name = name
+                cell.shape_type = name
                 chip_r.add(cell)
         chip_r.add(top_cell)
         self.Chip_BP_Signals_layer = chip_r
@@ -244,7 +244,7 @@ class EDA:
                             s.sort()
                             name = str((layer_num, signal_num, s[0]))
                             cell = chip_signals.cells[key]
-                            cell.name = name
+                            cell.shape_type = name
                             chip_r.add(cell)
 
                 else:
