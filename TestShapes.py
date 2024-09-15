@@ -1,10 +1,9 @@
 from Draw import plot_layout
-from Layout import MetalPolygon, Via, Point2D, Rect2D, Layout
+from Layout import Metal, Via, Point2D, Rect2D, Layout
 from Shapes import s_shape, lamed_shape, L_shape, rect_shape
 
 connection = Via(
-    bottomLayer=1,
-    topLayer=3,
+    layer=1,
     rect=Rect2D(x_start=2, x_end=3, y_start=3, y_end=4)
 )
 

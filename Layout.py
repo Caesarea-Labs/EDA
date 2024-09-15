@@ -1,4 +1,7 @@
-from dataclasses import field, dataclass
+from dataclasses import dataclass
+from typing import Optional, Iterator
+
+from Shapes import lamed_shape, rect_shape
 
 
 @dataclass
@@ -6,15 +9,16 @@ class Point2D:
     x: int
     y: int
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[int]:
         return iter((self.x, self.y))
+
 
 @dataclass
 class Point2DFloat:
     x: float
     y: float
 
-    def __iter__(self):
+    def __iter__(self)-> Iterator[float]:
         return iter((self.x, self.y))
 
 
@@ -25,44 +29,75 @@ class Rect2D:
     y_start: int
     y_end: int
 
-
     def vertices(self) -> list[Point2D]:
         """
         Returns the 4 vertices at the edges of the rectangle
         """
-        return [Point2D(self.x_start, self.y_start), Point2D(self.x_end, self.y_start), Point2D(self.x_end, self.y_end), Point2D(self.x_start, self.y_end)]
+        return [Point2D(self.x_start, self.y_start), Point2D(self.x_end, self.y_start), Point2D(self.x_end, self.y_end),
+                Point2D(self.x_start, self.y_end)]
+
+
+class LayoutPolygon:
+
+
+    layer: Optional[int]
+    """
+        The physical z height of the polygon. 
+        Metals exist in this layer solely, while vias connect between this layer and the layer above it. 
+    """
+    gds_layer: Optional[int]
+    """
+        The relatively arbitrary layer value given to the polygon by the GDS file.
+        Polygons with the same gds_layer are the same height, but a higher gds_layer value does not necessarily mean that the polygon is physically higher. 
+    """
+
+    # bottom_layer: int
+    # top_layer: int
+    vertices: list[Point2D]
+    """
+        The order of vertices is very important, as it determines how the sides are connected. Sides are connected from each vertex to the next one.
+"""
+    signal_index: Optional[int]
+    name: str
+
 
 @dataclass
-class MetalPolygon:
+class Metal(LayoutPolygon):
     """
-    A 2 dimensional shape of a metal, given by its edges.
-    The order of edges is very important, as it determines how the sides are connected. Sides are connected from each edge to the next one.
+    A 2 dimensional shape of a metal, given by its vertices.
     """
 
-    layer: int
-    """
-        The physically lowest metals have the smallest layer number.
-    """
+
     vertices: list[Point2D]
 
-    signal_index: int
+    signal_index: Optional[int]
     """
     A number binding this metal and all metals connected to it. 
     When an electrical signal flow through a metal, the same signal flows through all metals with the same signal index.
+    When the value is `None`, no signal has been assigned to the polygon, but it may be assigned a value by using signal_tracer.
     """
     name: str
     """String identifying the metal"""
+    gds_layer: Optional[int] = -1
+    layer: Optional[int] = None
 
 @dataclass
-class Via:
+class Via(LayoutPolygon):
     """
-    A connection between two metals on different layers, from bottomLayer to topLayer.
-    A via has a physical shape, denoted by the rect propery.
-    """
-    bottomLayer: int
-    topLayer: int
+       A connection between two metals on different layers, from bottomLayer to topLayer.
+       A via has a physical shape, denoted by the rect propery.
+       """
+
+
+    # bottom_layer: int
+    # top_layer: int
     rect: Rect2D
     name: str = "Via"
+    gds_layer: Optional[int] = -1
+    layer: Optional[int] = None
+
+    def __post_init__(self):
+        self.vertices = self.rect.vertices()
 
 
 @dataclass
@@ -71,7 +106,7 @@ class Layout:
         Layout of a chip, containing metals and connections (vias)
     """
 
-    metals: list[MetalPolygon]
+    metals: list[Metal]
     """
         The physical metals, existing in integer layers
     """
@@ -80,4 +115,105 @@ class Layout:
         Connections between metal layers.
     """
 
+    # def index_by_layer(self) -> list[list[Metal]]:
+    #     """
+    #     Returns a list of metals by layer. The first element is the first layer, second element is the second layer, etc.
+    #     """
+    #     layer_count = max(self.metals, key=lambda m: m.layer_2).layer + 1
+    #     index = [[] for _ in range(layer_count)]
+    #     for metal in self.metals:
+    #         index[metal.layer].append(metal)
+    #
+    #     return index
 
+
+if __name__ == '__main__':
+    shape = lamed_shape(1, 3, 2, 2)
+    test_layout = Layout(metals=[
+        shape.named("A").metal(0, 0),
+        shape.named("B").translate(6, 5).metal(0, 0),
+
+        shape.named("C").translate(1, 1).metal(1, 0),
+        shape.named("D").translate(8, 6).metal(1, 1),
+
+        shape.named("E").translate(0, 6).metal(2, 2),
+        lamed_shape(1, 5, 2, 2, name="F").rotate(270).mirror_vertical().translate(8, 2).metal(2, 2),
+
+        lamed_shape(1, 4, 2, 2, name="G").translate(0, 3).metal(3, 2),
+        shape.named("H").translate(8, 7).metal(3, 1),
+
+        shape.named("I").translate(4, 4).metal(4, 0),
+
+        rect_shape(width=2, height=1, name="d_int").translate(10, 10).metal(2, 1),
+
+        rect_shape(width=1, height=1, name="b_int1").translate(6, 8).metal(1, 0),
+        rect_shape(width=1, height=1, name="b_int2").translate(6, 8).metal(2, 0),
+        rect_shape(width=1, height=1, name="b_int3").translate(6, 8).metal(3, 0),
+
+        rect_shape(width=1, height=1, name="c_int1").translate(4, 5).metal(2, 0),
+        rect_shape(width=1, height=1, name="c_int2").translate(4, 5).metal(3, 0),
+
+    ],
+        vias=[
+            Via(
+                layer=0,
+                rect=Rect2D(x_start=3, x_end=5, y_start=4, y_end=6),
+                name="a"
+            ),
+            Via(
+                layer=0,
+                rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
+                name="b1"
+            ),
+            Via(
+                layer=1,
+                rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
+                name="b2"
+            ),
+            Via(
+                layer=2,
+                rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
+                name="b3"
+            ),
+            Via(
+                layer=3,
+                rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
+                name="b4"
+            ),
+            Via(
+                layer=1,
+                rect=Rect2D(x_start=4, x_end=5, y_start=5, y_end=6),
+                name="c1"
+            ),
+            Via(
+                layer=2,
+                rect=Rect2D(x_start=4, x_end=5, y_start=5, y_end=6),
+                name="c2"
+            ),
+            Via(
+                layer=3,
+                rect=Rect2D(x_start=4, x_end=5, y_start=5, y_end=6),
+                name="c3"
+            ),
+            Via(
+                layer=1,
+                rect=Rect2D(x_start=10, x_end=12, y_start=10, y_end=11),
+                name="d1"
+            ),
+            Via(
+                layer=2,
+                rect=Rect2D(x_start=10, x_end=12, y_start=10, y_end=11),
+                name="d2"
+            ),
+            Via(
+                layer=2,
+                rect=Rect2D(x_start=1, x_end=2, y_start=6, y_end=8),
+                name="e"
+            ),
+            Via(
+                layer=2,
+                rect=Rect2D(x_start=1, x_end=2, y_start=3, y_end=4),
+                name="f"
+            )
+        ]
+    )

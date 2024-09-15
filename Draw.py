@@ -1,10 +1,12 @@
 from dataclasses import dataclass
+from typing import cast
 
+# from matplotlib.axes import Axes
+from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from numpy.ma.core import shape
-
-from Layout import MetalPolygon, Point2D, Layout, Via, Rect2D
+from mpl_toolkits.mplot3d.axes3d import Axes3D
+from Layout import Metal, Point2D, Layout, Via, Rect2D
 
 fill_colors = ['cyan', 'lightgreen', 'lightblue', 'orange', 'yellow',
                'pink', 'lightcoral', 'lightgray', 'lavender', 'beige']
@@ -29,7 +31,7 @@ class Polygon3D:
 
 def plot_layout(layout: Layout, size: int = 10, height: int = 10):
     fig = plt.figure(figsize=(8, 8))
-    ax = fig.add_subplot(111, projection='3d')
+    ax = cast(Axes3D, fig.add_subplot(111, projection='3d'))
     ax.set_zlim(0, height)
     ax.set_ylim(0, size)
     ax.set_xlim(0, size)
@@ -68,6 +70,8 @@ def plot_layout(layout: Layout, size: int = 10, height: int = 10):
                   horizontalalignment='center', verticalalignment='center')
 
     for metal in layout.metals:
+        assert metal.layer is not None, "layer must be set to draw metal"
+        assert metal.signal_index is not None, "signal index must be set to draw metal"
         polygon = Polygon3D(
             z_base=metal.layer - 0.25,
             z_top=metal.layer + 0.25,
@@ -80,9 +84,10 @@ def plot_layout(layout: Layout, size: int = 10, height: int = 10):
         draw_shape(polygon)
 
     for via in layout.vias:
+        assert via.layer is not None, "layer must be set to draw via"
         polygon = Polygon3D(
-            z_base=via.bottomLayer,
-            z_top=via.topLayer,
+            z_base=via.layer,
+            z_top=via.layer + 1,
             fill_color="black",
             edge_color="white",
             vertices=via.rect.vertices(),
@@ -98,37 +103,37 @@ def plot_layout(layout: Layout, size: int = 10, height: int = 10):
     plt.show()
 
 
-if __name__ == '__main__':
-    triangle = MetalPolygon(vertices=[Point2D(0, 0), Point2D(2, 0), Point2D(1, 2)], layer=2)
-    square = MetalPolygon(vertices=[Point2D(3, 3), Point2D(3, 7), Point2D(7, 7), Point2D(7, 3)], layer=0)
-    s_shape = MetalPolygon(
-        vertices=[
-            Point2D(2, 2),
-            Point2D(2, 4),
-            Point2D(0, 4),
-            Point2D(0, 7),
-            Point2D(1, 7),
-            Point2D(1, 5),
-            Point2D(3, 5),
-            Point2D(3, 2)
-        ], layer=1
-    )
-    l_shape = MetalPolygon(
-        vertices=[
-            Point2D(1, 3),
-            Point2D(1, 4),
-            Point2D(4, 4),
-            Point2D(4, 7),
-            Point2D(5, 7),
-            Point2D(5, 3)
-        ], layer=3
-    )
+# if __name__ == '__main__':
+#     triangle = Metal(vertices=[Point2D(0, 0), Point2D(2, 0), Point2D(1, 2)], layer=2)
+#     square = Metal(vertices=[Point2D(3, 3), Point2D(3, 7), Point2D(7, 7), Point2D(7, 3)], layer=0)
+#     s_shape = Metal(
+#         vertices=[
+#             Point2D(2, 2),
+#             Point2D(2, 4),
+#             Point2D(0, 4),
+#             Point2D(0, 7),
+#             Point2D(1, 7),
+#             Point2D(1, 5),
+#             Point2D(3, 5),
+#             Point2D(3, 2)
+#         ], layer=1
+#     )
+#     l_shape = Metal(
+#         vertices=[
+#             Point2D(1, 3),
+#             Point2D(1, 4),
+#             Point2D(4, 4),
+#             Point2D(4, 7),
+#             Point2D(5, 7),
+#             Point2D(5, 3)
+#         ], layer=3
+#     )
 
-    connection = Via(
-        bottomLayer=1,
-        topLayer=3,
-        rect=Rect2D(x_start=2, x_end=3, y_start=3, y_end=4)
-    )
+#     connection = Via(
+#         bottom_layer=1,
+#         top_layer=3,
+#         rect=Rect2D(x_start=2, x_end=3, y_start=3, y_end=4)
+#     )
 
-    layout = Layout([triangle, square, s_shape, l_shape], [connection])
-    plot_layout(layout)
+#     layout = Layout([triangle, square, s_shape, l_shape], [connection])
+#     plot_layout(layout)
