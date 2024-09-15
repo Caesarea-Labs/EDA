@@ -23,8 +23,8 @@ class Shape2D:
     def with_vertices_and_center(self, vertices: list[Point2D], new_center: Point2DFloat) -> 'Shape2D':
         return Shape2D(shape_type=self.shape_type, vertices=vertices, center=new_center, name=self.name)
 
-    def metal(self, layer: Optional[int] = None, signal_index: int = 0) -> Metal:
-        return Metal(vertices=self.vertices, layer=layer, signal_index=signal_index, name=self.name)
+    def metal(self, layer: Optional[int] = None, signal_index: int = 0, gds_layer: Optional[int] = None) -> Metal:
+        return Metal(vertices=self.vertices, layer=layer, signal_index=signal_index, name=self.name, gds_layer=gds_layer)
 
     def rotate(self, angle: int) -> 'Shape2D':
         """Rotates the shape by multiples of 90 degrees."""
