@@ -27,75 +27,89 @@ test_layout = Layout(metals=[
     rect_shape(width=1, height=1, name="c_int1").translate(4, 5).metal(2, 0),
     rect_shape(width=1, height=1, name="c_int2").translate(4, 5).metal(3, 0),
 
+    rect_shape(width=1, height=3, name="m00").translate(14, 0).metal(0, 3),
+    rect_shape(width=1, height=3, name="m10").translate(14, 4).metal(1, 4),
+    rect_shape(width=1, height=3, name="m20").translate(14, 8).metal(2, 5),
+    rect_shape(width=1, height=3, name="m30").translate(14, 12).metal(3, 6),
+
+    rect_shape(width=1, height=3, name="m01").translate(14, 0).metal(1, 3),
+    rect_shape(width=1, height=3, name="m11").translate(14, 4).metal(2, 4),
+    rect_shape(width=1, height=3, name="m21").translate(14, 8).metal(3, 5),
+    rect_shape(width=1, height=3, name="m31").translate(14, 12).metal(4, 6),
 ],
     vias=[
-        Via(
-            layer=0,
-            rect=Rect2D(x_start=3, x_end=5, y_start=4, y_end=6),
-            name="a"
-        ),
-        Via(
-            layer=0,
-            rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
-            name="b1"
-        ),
-        Via(
-            layer=1,
-            rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
-            name="b2"
-        ),
-        Via(
-            layer=2,
-            rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
-            name="b3"
-        ),
-        Via(
-            layer=3,
-            rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
-            name="b4"
-        ),
-        Via(
-            layer=1,
-            rect=Rect2D(x_start=4, x_end=5, y_start=5, y_end=6),
-            name="c1"
-        ),
-        Via(
-            layer=2,
-            rect=Rect2D(x_start=4, x_end=5, y_start=5, y_end=6),
-            name="c2"
-        ),
-        Via(
-            layer=3,
-            rect=Rect2D(x_start=4, x_end=5, y_start=5, y_end=6),
-            name="c3"
-        ),
-        Via(
-            layer=1,
-            rect=Rect2D(x_start=10, x_end=12, y_start=10, y_end=11),
-            name="d1"
-        ),
-        Via(
-            layer=2,
-            rect=Rect2D(x_start=10, x_end=12, y_start=10, y_end=11),
-            name="d2"
-        ),
-        Via(
-            layer=2,
-            rect=Rect2D(x_start=1, x_end=2, y_start=6, y_end=8),
-            name="e"
-        ),
-        Via(
-            layer=2,
-            rect=Rect2D(x_start=1, x_end=2, y_start=3, y_end=4),
-            name="f"
-        )
-    ]
+    Via(
+        layer=0,
+        rect=Rect2D(x_start=3, x_end=5, y_start=4, y_end=6),
+        name="a"
+    ),
+    Via(
+        layer=0,
+        rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
+        name="b1"
+    ),
+    Via(
+        layer=1,
+        rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
+        name="b2"
+    ),
+    Via(
+        layer=2,
+        rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
+        name="b3"
+    ),
+    Via(
+        layer=3,
+        rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
+        name="b4"
+    ),
+    Via(
+        layer=1,
+        rect=Rect2D(x_start=4, x_end=5, y_start=5, y_end=6),
+        name="c1"
+    ),
+    Via(
+        layer=2,
+        rect=Rect2D(x_start=4, x_end=5, y_start=5, y_end=6),
+        name="c2"
+    ),
+    Via(
+        layer=3,
+        rect=Rect2D(x_start=4, x_end=5, y_start=5, y_end=6),
+        name="c3"
+    ),
+    Via(
+        layer=1,
+        rect=Rect2D(x_start=10, x_end=12, y_start=10, y_end=11),
+        name="d1"
+    ),
+    Via(
+        layer=2,
+        rect=Rect2D(x_start=10, x_end=12, y_start=10, y_end=11),
+        name="d2"
+    ),
+    Via(
+        layer=2,
+        rect=Rect2D(x_start=1, x_end=2, y_start=6, y_end=8),
+        name="e"
+    ),
+    Via(
+        layer=2,
+        rect=Rect2D(x_start=1, x_end=2, y_start=3, y_end=4),
+        name="f"
+    ),
+    Via(layer=0, rect=Rect2D(x_start=14, x_end=15, y_start=1, y_end=3), name="v0"),
+    Via(layer=1, rect=Rect2D(x_start=14, x_end=15, y_start=5, y_end=7), name="v1"),
+    Via(layer=2, rect=Rect2D(x_start=14, x_end=15, y_start=9, y_end=11), name="v2"),
+    Via(layer=3, rect=Rect2D(x_start=14, x_end=15, y_start=13, y_end=15), name="v3"),
+]
 )
 
-# TODO:
-# 1. Allow not specifying signals, and have it resolve the signals itself
-# 2. Have it attempt to connect 2 signals ('via edit')
-# 3. convert large GDS to our format for large input testing
+if __name__ == "__main__":
 
-plot_layout(test_layout, 14, 5)
+    # TODO:
+    # 1. Allow not specifying signals, and have it resolve the signals itself
+    # 2. Have it attempt to connect 2 signals ('via edit')
+    # 3. convert large GDS to our format for large input testing
 
+    plot_layout(test_layout, 18, 5)

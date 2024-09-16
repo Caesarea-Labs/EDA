@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from typing import Optional, Iterator
 
+from numpy import vecdot
+
+
 @dataclass
 class Point2D:
     x: int
@@ -15,7 +18,7 @@ class Point2DFloat:
     x: float
     y: float
 
-    def __iter__(self)-> Iterator[float]:
+    def __iter__(self) -> Iterator[float]:
         return iter((self.x, self.y))
 
 
@@ -35,7 +38,6 @@ class Rect2D:
 
 
 class LayoutPolygon:
-
 
     layer: Optional[int]
     """
@@ -64,7 +66,6 @@ class Metal(LayoutPolygon):
     A 2 dimensional shape of a metal, given by its vertices.
     """
 
-
     vertices: list[Point2D]
 
     signal_index: Optional[int]
@@ -75,7 +76,7 @@ class Metal(LayoutPolygon):
     """
     name: str
     """String identifying the metal"""
-    gds_layer: Optional[int] = -1
+    gds_layer: Optional[int] = None
     layer: Optional[int] = None
 
 @dataclass
@@ -85,12 +86,11 @@ class Via(LayoutPolygon):
        A via has a physical shape, denoted by the rect propery.
        """
 
-
     # bottom_layer: int
     # top_layer: int
     rect: Rect2D
     name: str = "Via"
-    gds_layer: Optional[int] = -1
+    gds_layer: Optional[int] = None
     layer: Optional[int] = None
 
     def __post_init__(self):
@@ -122,5 +122,3 @@ class Layout:
     #         index[metal.layer].append(metal)
     #
     #     return index
-
-
