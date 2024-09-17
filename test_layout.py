@@ -3,7 +3,7 @@ from Layout import Layout, Via, Rect2D
 from Shapes import L_shape, lamed_shape, rect_shape
 
 shape = lamed_shape(1, 3, 2, 2)
-test_layout = Layout(metals=[
+test_layout_const = Layout(metals=[
     shape.named("A").metal(0, 0),
     shape.named("B").translate(6, 5).metal(0, 0),
 
@@ -112,4 +112,4 @@ if __name__ == "__main__":
     # 2. Have it attempt to connect 2 signals ('via edit')
     # 3. convert large GDS to our format for large input testing
 
-    plot_layout(test_layout, 18, 5)
+    plot_layout(test_layout_const, 18, 5)

@@ -4,11 +4,10 @@ from typing import Tuple
 from shapely import STRtree, Polygon
 
 from Draw import plot_layout
-from Layout import Layout, Metal, Point2D, Via
-from test_layout import test_layout
+from Layout import Layout, Metal, MetalIndex, Point2D, Via, index_metals_by_gds_layer, to_shapely_polygon
+from test_layout import test_layout_const
 from utils import none_check
 
-MetalIndex = dict[int, STRtree]
 ViaIndex = dict[int, list[Via]]
 
 
@@ -17,21 +16,17 @@ def scrambled_test_layout() -> Layout:
     test layout converted to "hard mode", with no proper information on layers, but with less-reliable gds_layer information.
     """
     new_metals = [Metal(vertices=metal.vertices, layer=None, signal_index=metal.signal_index, name=metal.name,
-                        gds_layer=none_check(metal.layer) + 10) for metal in test_layout.metals]
+                        gds_layer=none_check(metal.layer) + 10) for metal in test_layout_const.metals]
     new_vias = [Via(
                 gds_layer=none_check(via.layer) + 20,
                 layer=None,
                 rect=via.rect,
                 name=via.name
-                ) for via in test_layout.vias]
+                ) for via in test_layout_const.vias]
     return Layout(new_metals, new_vias)
 
 
-def to_shapely_polygon(vertices: list[Point2D]) -> Polygon:
-    """
-    Convert 2d points to a form supported by shapely
-    """
-    return Polygon([(x, y) for x, y in vertices])
+
 
 # TODO: The two metal edges are the one with only one via connecting them. To decide which one is on top, use the one with the higher gds_layer value.
 
@@ -141,6 +136,8 @@ def via_touches_any_metal(via: Via, metals: STRtree) -> bool:
     # This step is very important as it vastly reduces the amount of intersection checks we need to do, essentially making this operation O(1) instead of O(n)
     candidates = metals.query(as_polygon)
     print(f"Candidates = {candidates}")
+    print(f"Intersecting Candidates = {[candidate for candidate in candidates if as_polygon.intersects(metals.geometries[candidate])]}")
+
     return any(as_polygon.intersects(metals.geometries[candidate]) for candidate in candidates)
 
 
@@ -152,7 +149,6 @@ def index_vias_by_gds_layer(layout: Layout) -> ViaIndex:
     # Organize polygons by layer
     via_index: dict[int, list[Via]] = {}
     for via in layout.vias:
-        # Convert 2d points to a form supported by shapely
         layer = none_check(via.gds_layer)
         existing_list = via_index.get(layer, None)
         if existing_list is None:
@@ -166,28 +162,7 @@ def index_vias_by_gds_layer(layout: Layout) -> ViaIndex:
     return via_index
 
 
-def index_metals_by_gds_layer(layout: Layout) -> MetalIndex:
-    """
-    Returns a map of metals by gds_layer. 
-    The layers are indexed in STRtrees for fast access
-    """
 
-    # Organize polygons by layer
-    polygon_list_index: dict[int, list[Polygon]] = {}
-    for metal in layout.metals:
-        layer = none_check(metal.gds_layer)
-        existing_list = polygon_list_index.get(layer, None)
-        polygon = to_shapely_polygon(metal.vertices)
-        if existing_list is None:
-            # No polygons in layer - add a new list for layer
-            polygon_list_index[layer] = [polygon]
-        else:
-            # Existing polygons in layer - add to list
-            existing_list.append(polygon)
-
-    # Optimize layers into STRtrees
-    tree_index: dict[int, STRtree] = {layer: STRtree(polygons) for layer, polygons in polygon_list_index.items()}
-    return tree_index
 
 
 if __name__ == "__main__":

@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from typing import Optional, Iterator
 
 from numpy import vecdot
+from shapely import Polygon, STRtree
+
+from utils import none_check
 
 
 @dataclass
@@ -60,7 +63,7 @@ class LayoutPolygon:
     name: str
 
 
-@dataclass
+@dataclass(eq = False)
 class Metal(LayoutPolygon):
     """
     A 2 dimensional shape of a metal, given by its vertices.
@@ -112,6 +115,7 @@ class Layout:
         Connections between metal layers.
     """
 
+
     # def index_by_layer(self) -> list[list[Metal]]:
     #     """
     #     Returns a list of metals by layer. The first element is the first layer, second element is the second layer, etc.
@@ -122,3 +126,36 @@ class Layout:
     #         index[metal.layer].append(metal)
     #
     #     return index
+
+
+MetalIndex = dict[int, STRtree]
+def index_metals_by_gds_layer(layout: Layout) -> MetalIndex:
+    """
+    Returns a map of metals by gds_layer. 
+    The layers are indexed in STRtrees for fast access
+    """
+
+    # Organize polygons by layer
+    polygon_list_index: dict[int, list[Polygon]] = {}
+    for metal in layout.metals:
+        layer = none_check(metal.gds_layer)
+        existing_list = polygon_list_index.get(layer, None)
+        polygon = to_shapely_polygon(metal.vertices)
+        if existing_list is None:
+            # No polygons in layer - add a new list for layer
+            polygon_list_index[layer] = [polygon]
+        else:
+            # Existing polygons in layer - add to list
+            existing_list.append(polygon)
+
+    # Optimize layers into STRtrees
+    tree_index: dict[int, STRtree] = {layer: STRtree(polygons) for layer, polygons in polygon_list_index.items()}
+    return tree_index
+
+
+
+def to_shapely_polygon(vertices: list[Point2D]) -> Polygon:
+    """
+    Convert 2d points to a form supported by shapely
+    """
+    return Polygon([(x, y) for x, y in vertices])
