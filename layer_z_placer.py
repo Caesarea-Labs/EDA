@@ -41,7 +41,7 @@ def inflate_layout(layout: Layout) -> Layout:
 
     indexed = index_metals_by_gds_layer(layout)
     via_layers = index_vias_by_gds_layer(layout)
-    via_to_metal_layers: dict[int, Tuple[int, int]] = {
+    via_to_metal_layers: dict[int, tuple[int, int]] = {
         # Assign connect metals for each via layer
         none_check(via_layer): get_via_layer_connected_metal_layers(via_layer, vias, indexed) for via_layer, vias in via_layers.items()
     }
@@ -53,7 +53,7 @@ def inflate_layout(layout: Layout) -> Layout:
     return Layout(new_metals, new_vias)
 
 
-def order_layers(via_to_metal_layers: dict[int, Tuple[int, int]]) -> Tuple[dict[int, int], dict[int, int]]:
+def order_layers(via_to_metal_layers: dict[int, tuple[int, int]]) -> tuple[dict[int, int], dict[int, int]]:
     """
     Returns a map from the METAL gds_layers to the actual 0-indexed layers, and from the VIA gds_layers to the actual 0-indexed layers.
     """
@@ -62,7 +62,7 @@ def order_layers(via_to_metal_layers: dict[int, Tuple[int, int]]) -> Tuple[dict[
 
     # 2. Graph like, start from the start as index 0, and treat the metal it is connected to as index i+1.
     # This dict maps every metal layer to the connected metal layer AND the connecting via gds_layer
-    metal_connections: dict[int, Tuple[int, int]] = {
+    metal_connections: dict[int, tuple[int, int]] = {
         start: (end, via) for via, (start, end) in via_to_metal_layers.items()}
     metal_gds_layer_to_layer: dict[int, int] = {}
     via_gds_layer_to_layer: dict[int, int] = {}
@@ -86,7 +86,7 @@ def order_layers(via_to_metal_layers: dict[int, Tuple[int, int]]) -> Tuple[dict[
     return metal_gds_layer_to_layer, via_gds_layer_to_layer
 
 
-def find_lowest_layer(via_to_metal_layers: dict[int, Tuple[int, int]]) -> int:
+def find_lowest_layer(via_to_metal_layers: dict[int, tuple[int, int]]) -> int:
     # Metal layer is connected to one via layer - it's a start or end.
     # Metal layer is connected to two via layers - it's a middle point
     # Metal layer is connected to more than two via layers - that's a contradication, throw an error.
@@ -112,7 +112,7 @@ def find_lowest_layer(via_to_metal_layers: dict[int, Tuple[int, int]]) -> int:
     return min(edges.keys())
 
 
-def get_via_layer_connected_metal_layers(via_layer: int, vias: list[Via], index: MetalIndex) -> Tuple[int, int]:
+def get_via_layer_connected_metal_layers(via_layer: int, vias: list[Via], index: MetalIndex) -> tuple[int, int]:
     """Returns the two gds_layers that this via layer is connected to, by filtering through metal layers that actually have metals in the via points."""
     # Only get metals that actually connect to all vias, which implies those metals are above/below the via.
     possible_metal_layers = [layer for layer in index.keys() if all_vias_touch_metals(vias, index[layer])]

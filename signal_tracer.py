@@ -54,14 +54,14 @@ def signals_to_graph(layout: Layout) -> Graph:
     return graph
 
 
-def get_intersecting_metals(polygon: list[Point2D], metal_tree: Tuple[STRtree, list[Metal]]) -> list[Metal]:
+def get_intersecting_metals(polygon: list[Point2D], metal_tree: tuple[STRtree, list[Metal]]) -> list[Metal]:
     tree, metals = metal_tree
     shapely_polygon = Polygon(polygon)
     query_result = tree.query(shapely_polygon)
     return [metals[i] for i in query_result if shapely_polygon.intersects(tree.geometries[i])]
 
 
-def index_metals_by_layer(layout: Layout) -> list[Tuple[STRtree, list[Metal]]]:
+def index_metals_by_layer(layout: Layout) -> list[tuple[STRtree, list[Metal]]]:
     """
     Returns a list of metals by layer.
     The layers are indexed in STRtrees for fast access, and the original metals can be retreived from the second item, the list of metals.
@@ -74,7 +74,7 @@ def index_metals_by_layer(layout: Layout) -> list[Tuple[STRtree, list[Metal]]]:
         polygon_list_index[layer].append(metal)
 
     # Optimize layers into STRtrees
-    tree_index: list[Tuple[STRtree, list[Metal]]] = [
+    tree_index: list[tuple[STRtree, list[Metal]]] = [
         (STRtree([Polygon(metal.vertices) for metal in metals]), metals) for metals in polygon_list_index]
     return tree_index
 

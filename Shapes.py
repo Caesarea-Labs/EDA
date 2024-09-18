@@ -68,7 +68,7 @@ class Shape2D:
         return self.with_vertices(mirrored)
 
 
-def build_shape(type_name: str, center: Point2DFloat, pairs: list[Tuple[int, int]], name: str) -> Shape2D:
+def build_shape(type_name: str, center: Point2DFloat, pairs: list[tuple[int, int]], name: str) -> Shape2D:
     return Shape2D(shape_type=type_name, vertices=[Point2D(x, y) for x, y in pairs], center=center, name=name)
 
 
