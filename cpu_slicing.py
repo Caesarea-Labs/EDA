@@ -1,18 +1,25 @@
+from gdstk import Polygon
+import gdstk
+import shapely
 from gpu_slicing import GdsPolygonBB
 from utils import measure_time
 
 @measure_time
 def get_contained_rectangles(rectangles: list[GdsPolygonBB], 
-                                   bounding_box: list[tuple[int, int]], ) -> list[int]:
+                                   bounding_box: list[tuple[int, int]], exclusive: bool) -> list[int]:
     """
-    Returns the indices of rectangles that exist entirely inside the passed bounding box.
-
+    Returns the indices of rectangles that exist inside the passed bounding box.
+    If exclusive is true, returns only rectangles that are entirely in the bounding box.
+    If exclusive is false, return rectangles that only intersect with the bounding box as well.
     """
     # (bbox_x_min, bbox_y_min), (bbox_x_max, bbox_y_max) = bounding_box
     bbox_x_min = min(bounding_box, key=lambda bb: bb[0])[0]
     bbox_y_min = min(bounding_box, key=lambda bb: bb[1])[1]
     bbox_x_max = max(bounding_box, key=lambda bb: bb[0])[0]
     bbox_y_max = max(bounding_box, key=lambda bb: bb[1])[1]
+    shapely_bounding_box = shapely.Polygon(bounding_box)
+    shapely.prepare(shapely_bounding_box)
+
 
     def is_point_in_polygon(point: tuple[float, float], polygon: list[tuple[int, int]]) -> bool:
         """
@@ -33,6 +40,7 @@ def get_contained_rectangles(rectangles: list[GdsPolygonBB],
 
         # Get the coordinates of the first vertex
         x1, y1 = polygon[0]
+
 
         # Loop through each edge of the polygon
         for i in range(1, num_vertices + 1):
@@ -57,8 +65,7 @@ def get_contained_rectangles(rectangles: list[GdsPolygonBB],
 
         return inside
     # Function to check if a rectangle is entirely contained in a polygon
-    def is_rectangle_in_polygon(rect: tuple[tuple[float, float], tuple[float, float]], 
-                                bounding_box: list[tuple[int, int]]) -> bool:
+    def is_rectangle_entirely_in_bounding_box(rect: tuple[tuple[float, float], tuple[float, float]]) -> bool:
         # Extract rectangle corner points
         (x1, y1), (x2, y2) = rect
         rect_corners = [
@@ -69,21 +76,28 @@ def get_contained_rectangles(rectangles: list[GdsPolygonBB],
         ]
 
         # Check if all rectangle corners are inside the polygon.
-        # If want to check for any intersection, even if not fully contained, this can be any() instead of all(). 
+            # If want to check for any intersection, even if not fully contained.
         return all(is_point_in_polygon(corner, bounding_box) for corner in rect_corners)
-
-
-    def rectangle_contained(rect: GdsPolygonBB):
+    
+    def rectangle_contained(rect: GdsPolygonBB) -> bool:
         (rect_x_min, rect_y_min), (rect_x_max, rect_y_max) = rect
 
         # First, do a very fast check - does the rectangle exist inside the bounding box of the polygon? if not, it has no chance of being contained
         # inside the polygon, which is smaller than its bounding box.
-        # If we want to check for any intersection, even if not fully contained, 
+
+        if exclusive:
+            if rect_x_max > bbox_x_max or rect_x_min < bbox_x_min or rect_y_max > bbox_y_max or rect_y_min < bbox_y_min:
+                return False
+            # Second - do a slow ray-casting check on the few rectangle that are actually someone in this zone. 
+            return is_rectangle_entirely_in_bounding_box(rect)
+            #         # If we want to check for any intersection, even if not fully contained, 
         # we need to replace rect_x_max with rect_x_min, rect_x_min with rect_x_max, and the same with the y values.
-        if rect_x_max > bbox_x_max or rect_x_min < bbox_x_min or rect_y_max > bbox_y_max or rect_y_min < bbox_y_min:
+        elif rect_x_min > bbox_x_max or rect_x_max < bbox_x_min or rect_y_min > bbox_y_max or rect_y_max < bbox_y_min:
             return False
-        # Second - do a slow ray-casting check on the few rectangle that are actually someone in this zone. 
-        return is_rectangle_in_polygon(rect, bounding_box)
+        else:
+            shapely_rect = shapely.box(rect[0][0], rect[0][1], rect[1][0], rect[1][1])
+            # If we want normal intersection and the bounding box is in the area, use the shapely algorithm.
+            return shapely.intersects(shapely_bounding_box,shapely_rect)
     
     result = []
     for i, rect in enumerate(rectangles):
@@ -93,3 +107,41 @@ def get_contained_rectangles(rectangles: list[GdsPolygonBB],
             result.append(i)
 
     return result
+
+def cut_polygons(polygons: list[Polygon], cut_shape: list[tuple[float,float]]) -> list[Polygon]:
+    """
+    Returns the intersecting part of the polygons with the cut shape
+    """
+    shapely_cut = shapely.Polygon(cut_shape)
+    shapely.prepare(shapely_cut)
+    return [cut_polygon(polygon, shapely_cut) for polygon in polygons]
+
+def cut_polygon(polygon: gdstk.Polygon, cut_shape: shapely.Polygon) -> gdstk.Polygon:
+    """
+    Returns the intersection of the polygon and the cut shape
+    """
+        # Convert GDSTK polygon to Shapely polygon
+    gdstk_points = polygon.points
+    shapely_polygon = shapely.Polygon(gdstk_points)
+    
+    # Perform the intersection
+    intersection = shapely.intersection(cut_shape, shapely_polygon) 
+
+    assert not intersection.is_empty, f"Expected polygons {polygon} and {cut_shape} to intersect before cutting them"
+    
+    
+    # Check if the intersection is a polygon
+    if isinstance(intersection, shapely.Polygon):
+        # Convert back to GDSTK polygon
+        new_points = list(intersection.exterior.coords)
+        return gdstk.Polygon(new_points, layer =polygon.layer, datatype=polygon.datatype)
+    
+    # If the intersection is a MultiPolygon, return the largest part
+    elif isinstance(intersection, shapely.MultiPolygon):
+        largest = max(intersection.geoms, key=lambda x: x.area)
+        new_points = list(largest.exterior.coords)
+        return gdstk.Polygon(new_points, layer =polygon.layer, datatype=polygon.datatype)
+    
+    # If the intersection is neither a Polygon nor a MultiPolygon, return None
+    else:
+        assert False, f"Expected the intersection of polygons {polygon} and {cut_shape} to be a polygon"
