@@ -48,6 +48,13 @@ def gds_to_layout(gds_file: str, bounding_box: list[tuple[int, int]], metal_laye
     contained_indices = get_contained_rectangles(bounding_boxes,bounding_box)
     contained_polygons = [all_polygons[i] for i in contained_indices]
 
+    new_gds = Library()
+    new_gds_cell = new_gds.new_cell("top_io")
+    for polygon in contained_polygons:
+        new_gds_cell.add(polygon)
+
+    new_gds.write_gds("filtered.gds")
+
     print("alo")
 
     # all_polygons[0].bounding_box()
