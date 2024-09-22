@@ -3,7 +3,7 @@ from typing import Tuple
 
 from typing_extensions import Optional
 
-from Layout import Point2D, Metal, Point2DFloat
+from layout import Point2D, Metal
 
 
 @dataclass
@@ -11,7 +11,7 @@ class Shape2D:
     """Represents a 2D shape with a name. Has many utility methods for transforming the shape"""
     vertices: list[Point2D]
     shape_type: str
-    center: Point2DFloat
+    center: Point2D
     name: str
 
     def named(self, name: str) -> 'Shape2D':
@@ -20,7 +20,7 @@ class Shape2D:
     def with_vertices(self, vertices: list[Point2D]) -> 'Shape2D':
         return Shape2D(shape_type=self.shape_type, vertices=vertices, center=self.center, name=self.name)
 
-    def with_vertices_and_center(self, vertices: list[Point2D], new_center: Point2DFloat) -> 'Shape2D':
+    def with_vertices_and_center(self, vertices: list[Point2D], new_center: Point2D) -> 'Shape2D':
         return Shape2D(shape_type=self.shape_type, vertices=vertices, center=new_center, name=self.name)
 
     def metal(self, layer: Optional[int] = None, signal_index: int = 0, gds_layer: Optional[int] = None) -> Metal:
@@ -52,7 +52,7 @@ class Shape2D:
         """Moves all vertices by the given x and y translation values."""
         return self.with_vertices_and_center(
             [Point2D(x + translate_x, y + translate_y) for (x, y) in self.vertices],
-            new_center=Point2DFloat(self.center.x + translate_x, self.center.y + translate_y)
+            new_center=Point2D(self.center.x + translate_x, self.center.y + translate_y)
         )
 
     def mirror_horizontal(self):
@@ -68,14 +68,14 @@ class Shape2D:
         return self.with_vertices(mirrored)
 
 
-def build_shape(type_name: str, center: Point2DFloat, pairs: list[tuple[int, int]], name: str) -> Shape2D:
+def build_shape(type_name: str, center: Point2D, pairs: list[tuple[float, float]], name: str) -> Shape2D:
     return Shape2D(shape_type=type_name, vertices=[Point2D(x, y) for x, y in pairs], center=center, name=name)
 
 
-def s_shape(x_spacing: int, y_spacing: int, x_thickness: int, y_thickness: int, name: str = "Shape") -> Shape2D:
+def s_shape(x_spacing: float, y_spacing: float, x_thickness: float, y_thickness: float, name: str = "Shape") -> Shape2D:
     return build_shape(
         "S",
-        center=Point2DFloat((x_thickness + x_spacing) / 2, (y_thickness + y_spacing) / 2),
+        center=Point2D((x_thickness + x_spacing) / 2, (y_thickness + y_spacing) / 2),
         pairs=[
             (0, 0),
             (0, y_thickness),
@@ -94,10 +94,10 @@ def s_shape(x_spacing: int, y_spacing: int, x_thickness: int, y_thickness: int, 
     )
 
 
-def lamed_shape(x_spacing: int, y_spacing: int, x_thickness: int, y_thickness: int, name: str = "Shape") -> Shape2D:
+def lamed_shape(x_spacing: float, y_spacing: float, x_thickness: float, y_thickness: float, name: str = "Shape") -> Shape2D:
     return build_shape(
         "lamed",
-        center=Point2DFloat((x_thickness + x_spacing) / 2, (y_thickness + y_spacing) / 2),
+        center=Point2D((x_thickness + x_spacing) / 2, (y_thickness + y_spacing) / 2),
         pairs=[
             (0, 0),
             (x_thickness, 0),
@@ -112,10 +112,10 @@ def lamed_shape(x_spacing: int, y_spacing: int, x_thickness: int, y_thickness: i
     )
 
 
-def L_shape(x_spacing: int, y_spacing: int, x_thickness: int, y_thickness: int, name: str = "Shape") -> Shape2D:
+def L_shape(x_spacing: float, y_spacing: float, x_thickness: float, y_thickness: float, name: str = "Shape") -> Shape2D:
     return build_shape(
         "L",
-        Point2DFloat((x_thickness + x_spacing) / 2, (y_thickness + y_spacing) / 2),
+        Point2D((x_thickness + x_spacing) / 2, (y_thickness + y_spacing) / 2),
         [
             (0, 0),
             (x_spacing + x_thickness, 0),
@@ -128,10 +128,10 @@ def L_shape(x_spacing: int, y_spacing: int, x_thickness: int, y_thickness: int, 
     )
 
 
-def rect_shape(width: int, height: int, name: str = "Shape") -> Shape2D:
+def rect_shape(width: float, height: float, name: str = "Shape") -> Shape2D:
     return build_shape(
         type_name="rect",
-        center=Point2DFloat(width / 2, height / 2),
+        center=Point2D(width / 2, height / 2),
         pairs=[
             (0, 0),
             (width, 0),

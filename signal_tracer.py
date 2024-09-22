@@ -5,9 +5,9 @@ from networkx import Graph, connected_components
 from shapely import Polygon, STRtree
 
 from Draw import plot_layout
-from Layout import Layout, Metal, Point2D, Via
+from layout import Layout, Metal, Point2D, Via
 from test_layout import test_layout_const
-from utils import none_check
+from utils import max_of, none_check
 
 def trace_signals(layout: Layout) -> Layout:
     """Will return a new layout with the MetalPolygons having the signal_index value set, to match how the metals and vias connect to each other. 
@@ -66,7 +66,7 @@ def index_metals_by_layer(layout: Layout) -> list[tuple[STRtree, list[Metal]]]:
     Returns a list of metals by layer.
     The layers are indexed in STRtrees for fast access, and the original metals can be retreived from the second item, the list of metals.
     """
-    layer_count = none_check(max(layout.metals, key=lambda m: none_check(m.layer)).layer) + 1
+    layer_count = max_of(layout.metals, key=lambda m: none_check(m.layer)) + 1
     # Organize polygons by layer
     polygon_list_index: list[list[Metal]] = [[] for _ in range(layer_count)]
     for metal in layout.metals:

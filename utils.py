@@ -1,8 +1,9 @@
 
 
 from functools import wraps
+import math
 import time
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, Optional, TypeVar, cast
 
 
 T = TypeVar("T")
@@ -20,3 +21,30 @@ def measure_time(func: Callable[..., T]) -> Callable[..., T]:
         print(f"{func.__name__}() completed in {end_time - start_time:.4f} seconds.")
         return result
     return wrapper
+
+
+R = TypeVar('R', int, float)  # The type of the result (int or float)
+
+def max_of(arr: list[T], key: Callable[[T], R]) -> R:
+    """
+    Returns the maximum value in the array given by the key
+    """
+    assert len(arr) > 0
+    max = -math.inf
+    for element in arr:
+        value = key(element)
+        if value > max:
+            max = value
+    return cast(R, max)
+
+def min_of(arr: list[T], key: Callable[[T], R]) -> R:
+    """
+    Returns the minimum value in the array given by the key
+    """
+    assert len(arr) > 0
+    min = math.inf
+    for element in arr:
+        value = key(element)
+        if value < min:
+            min = value
+    return cast(R, min)

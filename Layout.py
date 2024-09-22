@@ -9,15 +9,6 @@ from utils import none_check
 
 @dataclass
 class Point2D:
-    x: int
-    y: int
-
-    def __iter__(self) -> Iterator[int]:
-        return iter((self.x, self.y))
-
-
-@dataclass
-class Point2DFloat:
     x: float
     y: float
 
@@ -25,12 +16,21 @@ class Point2DFloat:
         return iter((self.x, self.y))
 
 
+# @dataclass
+# class Point2DFloat:
+#     x: float
+#     y: float
+
+#     def __iter__(self) -> Iterator[float]:
+#         return iter((self.x, self.y))
+
+
 @dataclass
 class Rect2D:
-    x_start: int
-    x_end: int
-    y_start: int
-    y_end: int
+    x_start: float
+    x_end: float
+    y_start: float
+    y_end: float
 
     def vertices(self) -> list[Point2D]:
         """
@@ -115,17 +115,6 @@ class Layout:
         Connections between metal layers.
     """
 
-
-    # def index_by_layer(self) -> list[list[Metal]]:
-    #     """
-    #     Returns a list of metals by layer. The first element is the first layer, second element is the second layer, etc.
-    #     """
-    #     layer_count = max(self.metals, key=lambda m: m.layer_2).layer + 1
-    #     index = [[] for _ in range(layer_count)]
-    #     for metal in self.metals:
-    #         index[metal.layer].append(metal)
-    #
-    #     return index
 
 
 MetalIndex = dict[int, STRtree]

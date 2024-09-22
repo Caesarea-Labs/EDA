@@ -3,10 +3,12 @@ from gdstk import Cell, Library, Polygon, Reference, read_gds
 from typing import Tuple, cast
 
 import gdstk
-import Layout
-from cpu_slicing import cut_polygons, get_contained_rectangles
-from gpu_slicing import GdsPolygonBB, filter_intersecting_rectangles_gpu
-from utils import measure_time
+from Draw import plot_layout
+from layer_z_placer import inflate_layout
+from layout import Layout, Metal, Point2D, Rect2D, Via
+from cpu_slicing import GdsPolygonBB, cut_polygons, get_contained_rectangles
+from signal_tracer import trace_signals
+from utils import max_of, measure_time, min_of
 
 cache_dir = Path("cache")
 cell_name = "top_io"
@@ -29,7 +31,7 @@ def cache_polygons(polygons: list[Polygon], path: Path):
     path.parent.mkdir(parents = True, exist_ok=True)
     new_gds.write_gds(path)
 
-def get_filtered_polygons(gds_path: Path, bounding_box: list[tuple[float, float]], metal_layers: list[int], via_layers: list[int]) -> list[Polygon]:
+def get_filtered_polygons(gds_path: Path, bounding_box: list[tuple[float, float]], metal_layers: set[int], via_layers: set[int]) -> list[Polygon]:
 
     # We cache the filtered polygons in the cache dir
     filtered_gds_cache = cache_dir.joinpath("filtered.gds")
@@ -40,7 +42,7 @@ def get_filtered_polygons(gds_path: Path, bounding_box: list[tuple[float, float]
     # We measure the time it takes for the expensive functions
     @measure_time
     def read_gds_timed() -> Library:
-        return read_gds(gds_path, filter={(layer, 0) for layer in (metal_layers + via_layers)})
+        return read_gds(gds_path, filter={(layer, 0) for layer in (list(metal_layers) + list(via_layers))})
 
     # Assume data type is 0 always for now
     gds = read_gds_timed()
@@ -73,7 +75,7 @@ def get_filtered_polygons(gds_path: Path, bounding_box: list[tuple[float, float]
 
 
 
-def gds_to_layout(gds_file: Path, bounding_box: list[tuple[float, float]], metal_layers: list[int], via_layers: list[int]) -> Layout:
+def slice_gds_to_layout(gds_file: Path, bounding_box: list[tuple[float, float]], metal_layers: set[int], via_layers: set[int]) -> Layout:
     """
     Converts the bounding_box part of a gds file at gds_file to a Caesarea Layout.
 
@@ -86,42 +88,61 @@ def gds_to_layout(gds_file: Path, bounding_box: list[tuple[float, float]], metal
 
     relevant_polygons = get_filtered_polygons(gds_file, bounding_box, metal_layers, via_layers)
     sliced = cut_polygons(relevant_polygons, bounding_box)
+    # aligned = align_polygons_to_origin(sliced)
 
-    cache_polygons(sliced, cache_dir.joinpath("cut.gds"))
+    # cache_polygons(sliced, cache_dir.joinpath("cut.gds"))
+
+    return gds_to_layout(sliced, metal_layers, via_layers)
+
+def align_polygons_to_origin(polygons: list[Polygon]) -> list[Polygon]:
+    """
+    Translates all polygons by the same x,y, such that there is at least one polygon with x = 0 and y = 0 (and there are no negative values).
+    For example, if all polygons are at least x= 500, y = 700, it will translate by (500,700) so that the polygons will be closer to origin.
+    """
+
+    min_x = min_of(polygons, key=lambda poly: min_of(poly.points, lambda point: point[0]))
+    min_y = min_of(polygons, key=lambda poly: min_of(poly.points, lambda point: point[1]))
+
+    return [polygon.translate(-min_x, -min_y) for polygon in polygons]
 
 
-    print("alo")
 
-    # all_polygons[0].bounding_box()
-    # all_polygons_without_repetitions = cell.get_polygons(depth=None, apply_repetitions=False)
-    # print("Getting just polygons")
-    # just_polygons = cell.polygons
-    # x = 2
-    # # relevant_layers = metal_layers + via_layers
-    # # A bit of a mouthful but it flattens the list of polygons in all relevant layers
-    # # relevant_polygons = [polygon for layer in relevant_layers for polygon in cell.get_polygons(depth=None, layer=layer, datatype=0)]
+def gds_to_layout(polygons: list[Polygon], metal_layers: set[int], via_layers: set[int]) -> Layout:
+    metals = [gds_polygon_to_metal(polygon) for polygon in polygons if polygon.layer in metal_layers]
+    vias = [gds_polygon_to_via(polygon) for polygon in polygons if polygon.layer in via_layers]
+    return Layout(metals = metals, vias = vias)
 
-    # # polygons = cell.get_polygons(depth=None)
+def gds_polygon_to_metal(polygon: Polygon) -> Metal:
+    vertices = [
+        Point2D(point[0], point[1]) for point in polygon.points
+    ]
+    return Metal(
+        name = "",
+        gds_layer=polygon.layer,
+        vertices = vertices,
+        signal_index=None
+    )
+def gds_polygon_to_via(polygon: Polygon) -> Via:
+    box = polygon.bounding_box()
+    return Via(
+        name = "",
+        gds_layer=polygon.layer,
+        rect = Rect2D(box[0][0], box[1][0], box[0][1], box[1][1]),
+    )
 
-    # gds_shape = gdstk.Polygon(bounding_box)
-    # print("Cutting gds polygons")
-    # cut = gdstk.boolean(Reference(cell, (0, 0)), gds_shape, "and")
-    # print("Finished cutting gds polygons")
-    # x = 2
 
-    # for polygon in cell.polygons:
-    #     polygon
 
-# TODO we've implemented rect slicing, we need to add L slicing later as well
 
 @measure_time
 def main():
-    gds_to_layout(Path("test_gds_1.gds"),
+    layout = slice_gds_to_layout(Path("test_gds_1.gds"),
                     [(1200, 730), (1200, 775), (1390, 775), (1390, 762), (1210, 762), (1210, 730)],
-                #   ((1200, 730), (1390, 775)),
-                  metal_layers=[61, 62, 63, 64, 65, 66],
-                  via_layers=[70, 71, 72, 73, 74]
+                  metal_layers={61, 62, 63, 64, 65, 66},
+                  via_layers={70, 71, 72, 73, 74}
                   )
+    with_layers = inflate_layout(layout)
+    with_signal = trace_signals(with_layers)
+    plot_layout(with_signal)
 
 
 if __name__ == "__main__":

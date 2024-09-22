@@ -1,8 +1,9 @@
 from gdstk import Polygon
 import gdstk
 import shapely
-from gpu_slicing import GdsPolygonBB
-from utils import measure_time
+from utils import max_of, measure_time, min_of
+
+GdsPolygonBB = tuple[tuple[float, float], tuple[float, float]]
 
 @measure_time
 def get_contained_rectangles(rectangles: list[GdsPolygonBB], 
@@ -13,10 +14,10 @@ def get_contained_rectangles(rectangles: list[GdsPolygonBB],
     If exclusive is false, return rectangles that only intersect with the bounding box as well.
     """
     # (bbox_x_min, bbox_y_min), (bbox_x_max, bbox_y_max) = bounding_box
-    bbox_x_min = min(bounding_box, key=lambda bb: bb[0])[0]
-    bbox_y_min = min(bounding_box, key=lambda bb: bb[1])[1]
-    bbox_x_max = max(bounding_box, key=lambda bb: bb[0])[0]
-    bbox_y_max = max(bounding_box, key=lambda bb: bb[1])[1]
+    bbox_x_min = min_of(bounding_box, key=lambda bb: bb[0])
+    bbox_y_min = min_of(bounding_box, key=lambda bb: bb[1])
+    bbox_x_max = max_of(bounding_box, key=lambda bb: bb[0])
+    bbox_y_max = max_of(bounding_box, key=lambda bb: bb[1])
     shapely_bounding_box = shapely.Polygon(bounding_box)
     shapely.prepare(shapely_bounding_box)
 

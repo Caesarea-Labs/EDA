@@ -1,12 +1,15 @@
 from dataclasses import dataclass
-from typing import cast
+import math
+from typing import Callable, TypeVar, cast
 
 # from matplotlib.axes import Axes
 from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from mpl_toolkits.mplot3d.axes3d import Axes3D
-from Layout import Metal, Point2D, Layout, Via, Rect2D
+from shapely import is_empty
+from layout import Metal, Point2D, Layout, Via, Rect2D
+from utils import max_of, min_of, none_check
 
 fill_colors = ['cyan', 'lightgreen', 'lightblue', 'orange', 'yellow',
                'pink', 'lightcoral', 'lightgray', 'lavender', 'beige']
@@ -29,12 +32,20 @@ class Polygon3D:
     name: str
 
 
-def plot_layout(layout: Layout, size: int = 10, height: int = 10):
+
+
+
+
+
+def plot_layout(layout: Layout):
     fig = plt.figure(figsize=(8, 8))
     ax = cast(Axes3D, fig.add_subplot(111, projection='3d'))
-    ax.set_zlim(0, height)
-    ax.set_ylim(0, size)
-    ax.set_xlim(0, size)
+    max_z = max_of(layout.metals, key=lambda m: none_check(m.layer))
+    max_xy = max_of(layout.metals, key=lambda m: max_of(m.vertices, key=lambda v: max(v.x, v.y)))
+    min_xy = min_of(layout.metals, key=lambda m: min_of(m.vertices, key=lambda v: min(v.x, v.y)))
+    ax.set_zlim(0, max_z)
+    ax.set_ylim(min_xy, max_xy)
+    ax.set_xlim(min_xy, max_xy)
 
     def draw_shape(shape: Polygon3D):
         x_coords = [point.x for point in shape.vertices]  # Get the x coordinates

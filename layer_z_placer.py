@@ -4,7 +4,7 @@ from typing import Tuple
 from shapely import STRtree, Polygon
 
 from Draw import plot_layout
-from Layout import Layout, Metal, MetalIndex, Point2D, Via, index_metals_by_gds_layer, to_shapely_polygon
+from layout import Layout, Metal, MetalIndex, Point2D, Via, index_metals_by_gds_layer, to_shapely_polygon
 from test_layout import test_layout_const
 from utils import none_check
 
@@ -42,7 +42,7 @@ def inflate_layout(layout: Layout) -> Layout:
     indexed = index_metals_by_gds_layer(layout)
     via_layers = index_vias_by_gds_layer(layout)
     via_to_metal_layers: dict[int, tuple[int, int]] = {
-        # Assign connect metals for each via layer
+        # Assign connected metals for each via layer
         none_check(via_layer): get_via_layer_connected_metal_layers(via_layer, vias, indexed) for via_layer, vias in via_layers.items()
     }
     metal_gds_layer_to_layer, via_gds_layer_to_layer = order_layers(via_to_metal_layers)
@@ -56,6 +56,7 @@ def inflate_layout(layout: Layout) -> Layout:
 def order_layers(via_to_metal_layers: dict[int, tuple[int, int]]) -> tuple[dict[int, int], dict[int, int]]:
     """
     Returns a map from the METAL gds_layers to the actual 0-indexed layers, and from the VIA gds_layers to the actual 0-indexed layers.
+    :param via_to_metal_layers A map calculated in the previous step, that assigns every via the metal layers it is connected to. 
     """
     # 1. Find out where the start and end are
     current = find_lowest_layer(via_to_metal_layers)
@@ -63,7 +64,8 @@ def order_layers(via_to_metal_layers: dict[int, tuple[int, int]]) -> tuple[dict[
     # 2. Graph like, start from the start as index 0, and treat the metal it is connected to as index i+1.
     # This dict maps every metal layer to the connected metal layer AND the connecting via gds_layer
     metal_connections: dict[int, tuple[int, int]] = {
-        start: (end, via) for via, (start, end) in via_to_metal_layers.items()}
+        start: (end, via) for via, (start, end) in via_to_metal_layers.items()
+    }
     metal_gds_layer_to_layer: dict[int, int] = {}
     via_gds_layer_to_layer: dict[int, int] = {}
     layer_index = 0
@@ -80,8 +82,15 @@ def order_layers(via_to_metal_layers: dict[int, tuple[int, int]]) -> tuple[dict[
     # Add the highest layer mapping, since the loop stops before running on the last element.
     metal_gds_layer_to_layer[current] = layer_index
 
-    assert len(metal_gds_layer_to_layer) == len(via_to_metal_layers) + \
-        1, f"There isn't a proper layer mapping for every gds_layer (expected {len(via_to_metal_layers) + 1}, got {len(metal_gds_layer_to_layer)})"
+    gds_layer_mapping_count = len(metal_gds_layer_to_layer)
+    layer_count = len(via_to_metal_layers) + 1
+    if gds_layer_mapping_count != layer_count:
+        all_metal_gds_layers = {metal_layer for connection in via_to_metal_layers.values() for metal_layer in connection}
+        missing_mappings = [layer for layer in all_metal_gds_layers if layer not in metal_gds_layer_to_layer]
+        assert False, (f"There isn't a proper layer mapping for every gds_layer (expected {layer_count}, got {gds_layer_mapping_count})."
+                    f"Layers without mappings: {missing_mappings}. All mappings: {metal_gds_layer_to_layer}.")
+
+
 
     return metal_gds_layer_to_layer, via_gds_layer_to_layer
 
@@ -115,7 +124,7 @@ def find_lowest_layer(via_to_metal_layers: dict[int, tuple[int, int]]) -> int:
 def get_via_layer_connected_metal_layers(via_layer: int, vias: list[Via], index: MetalIndex) -> tuple[int, int]:
     """Returns the two gds_layers that this via layer is connected to, by filtering through metal layers that actually have metals in the via points."""
     # Only get metals that actually connect to all vias, which implies those metals are above/below the via.
-    possible_metal_layers = [layer for layer in index.keys() if all_vias_touch_metals(vias, index[layer])]
+    possible_metal_layers = sorted([layer for layer in index.keys() if all_vias_touch_metals(vias, index[layer])])
 
     assert len(possible_metal_layers) <= 2, f"More than two possible metal layers could be connected to via layer {via_layer}: {possible_metal_layers}.\
  All of the vias on that level hit metals in all layers equally ({len(vias)} times)."
@@ -135,8 +144,6 @@ def via_touches_any_metal(via: Via, metals: STRtree) -> bool:
     as_polygon = to_shapely_polygon(via.vertices)
     # This step is very important as it vastly reduces the amount of intersection checks we need to do, essentially making this operation O(1) instead of O(n)
     candidates = metals.query(as_polygon)
-    print(f"Candidates = {candidates}")
-    print(f"Intersecting Candidates = {[candidate for candidate in candidates if as_polygon.intersects(metals.geometries[candidate])]}")
 
     return any(as_polygon.intersects(metals.geometries[candidate]) for candidate in candidates)
 

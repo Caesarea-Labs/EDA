@@ -6,7 +6,6 @@ from numpy.typing import NDArray
 from utils import measure_time
 
 # ((min_x,min_y), (max_x, max_y))
-GdsPolygonBB = tuple[tuple[float, float], tuple[float, float]]
 
 @measure_time
 def filter_intersecting_rectangles_gpu(rectangles:  list[GdsPolygonBB], bounding_box: GdsPolygonBB) -> list[int]:
