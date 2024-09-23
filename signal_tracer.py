@@ -4,8 +4,8 @@ from typing import Iterable, Tuple, cast
 from networkx import Graph, connected_components
 from shapely import Polygon, STRtree
 
-from Draw import plot_layout
 from layout import Layout, Metal, Point2D, Via
+from plotly_layout import plotly_plot_layout
 from test_layout import test_layout_const
 from utils import max_of, none_check
 
@@ -109,4 +109,4 @@ def test_layout_without_signals() -> Layout:
 if __name__ == "__main__":
     no_signals = test_layout_without_signals()
     traced = trace_signals(no_signals)
-    plot_layout(traced)
+    plotly_plot_layout(traced, show_text=True)

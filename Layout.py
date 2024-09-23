@@ -4,16 +4,10 @@ from typing import Optional, Iterator
 from numpy import vecdot
 from shapely import Polygon, STRtree
 
-from utils import none_check
+from utils import max_of, none_check
 
 
-@dataclass(frozen=True, eq=True)
-class Point2D:
-    x: float
-    y: float
 
-    def __iter__(self) -> Iterator[float]:
-        return iter((self.x, self.y))
 
 
 # @dataclass
@@ -25,19 +19,7 @@ class Point2D:
 #         return iter((self.x, self.y))
 
 
-@dataclass
-class Rect2D:
-    x_start: float
-    x_end: float
-    y_start: float
-    y_end: float
 
-    def vertices(self) -> list[Point2D]:
-        """
-        Returns the 4 vertices at the edges of the rectangle
-        """
-        return [Point2D(self.x_start, self.y_start), Point2D(self.x_end, self.y_start), Point2D(self.x_end, self.y_end),
-                Point2D(self.x_start, self.y_end)]
 
 
 class LayoutPolygon:
@@ -115,6 +97,25 @@ class Layout:
     """
         Connections between metal layers.
     """
+
+    def layer_count(self) -> int:
+        """
+            Returns the highest layer of metals, plus 1
+        """
+        return max_of(self.metals, lambda m : none_check(m.layer)) + 1
+    
+    def max_signal(self) -> int:
+        """
+            Returns the highest layer of metals, plus 1
+        """
+        return max_of(self.metals, lambda m : none_check(m.layer)) + 1
+    
+    def metals_by_layer(self) -> list[list[Metal]]:
+        layers = [[] for _ in range(len(self.metals))]
+        for metal in self.metals:
+            layers[none_check(metal.layer)].append(metal)
+        
+        return layers
 
 
 MetalIndex = dict[int, STRtree]

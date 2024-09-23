@@ -2,17 +2,18 @@ from pathlib import Path
 from gdstk import Cell, Library, Polygon, Reference, read_gds
 from typing import Tuple, cast
 
-import gdstk
-from Draw import plot_layout
 from layer_z_placer import inflate_layout
 from layout import Layout, Metal, Point2D, Rect2D, Via
-from cpu_slicing import GdsPolygonBB, cut_polygons, get_contained_rectangles
+from polygon_slicing import GdsPolygonBB, cut_polygons, get_contained_rectangles
 from plotly_layout import plotly_plot_layout
 from signal_tracer import trace_signals
 from utils import max_of, measure_time, min_of
 
 cache_dir = Path("cache")
 cell_name = "top_io"
+
+
+
 
 def get_gds_top_level_polygons(path: Path) -> list[Polygon]:
     """
@@ -21,7 +22,8 @@ def get_gds_top_level_polygons(path: Path) -> list[Polygon]:
     library = read_gds(path)
     cells = cast(list[Cell], library.top_level())
     cell = cells[0]
-    return cell.get_polygons(depth = None)
+    return cell.get_polygons(depth=None)
+
 
 def cache_polygons(polygons: list[Polygon], path: Path):
     new_gds = Library()
@@ -29,8 +31,9 @@ def cache_polygons(polygons: list[Polygon], path: Path):
     for polygon in polygons:
         new_gds_cell.add(polygon)
 
-    path.parent.mkdir(parents = True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     new_gds.write_gds(path)
+
 
 def get_filtered_polygons(gds_path: Path, bounding_box: list[tuple[float, float]], metal_layers: set[int], via_layers: set[int]) -> list[Polygon]:
     # We cache the filtered polygons in the cache dir
@@ -38,8 +41,8 @@ def get_filtered_polygons(gds_path: Path, bounding_box: list[tuple[float, float]
     if cache_dir.exists():
         return get_gds_top_level_polygons(filtered_gds_cache)
 
-
     # We measure the time it takes for the expensive functions
+
     @measure_time
     def read_gds_timed() -> Library:
         return read_gds(gds_path, filter={(layer, 0) for layer in (list(metal_layers) + list(via_layers))})
@@ -60,22 +63,20 @@ def get_filtered_polygons(gds_path: Path, bounding_box: list[tuple[float, float]
     def prepare_polygon_bounding_boxes() -> list[GdsPolygonBB]:
         return [polygon.bounding_box() for polygon in all_polygons]
 
-    # We do a naive check - only check for the bounding box of the polygons, not their exact vertices. 
-    # But this is ok - if the bounding box of the polygon is not inside the desired bounding box, it's ok to discard it. 
-    # This makes the slicing much more performant. 
+    # We do a naive check - only check for the bounding box of the polygons, not their exact vertices.
+    # But this is ok - if the bounding box of the polygon is not inside the desired bounding box, it's ok to discard it.
+    # This makes the slicing much more performant.
     bounding_boxes = prepare_polygon_bounding_boxes()
-    contained_indices = get_contained_rectangles(bounding_boxes,bounding_box, exclusive = False)
+    contained_indices = get_contained_rectangles(bounding_boxes, bounding_box, exclusive=False)
     contained_polygons = [all_polygons[i] for i in contained_indices]
 
     # Cache the filtered gds because this is a long operation
-    cache_polygons(contained_polygons,filtered_gds_cache)
+    cache_polygons(contained_polygons, filtered_gds_cache)
 
     return contained_polygons
 
 
-
-
-def slice_gds_to_layout(gds_file: Path, bounding_box: list[tuple[float, float]], metal_layers: set[int], via_layers: set[int]) -> Layout:
+def slice_gds_to_layout(gds_file: Path, bounding_box: CPolygon, metal_layers: set[int], via_layers: set[int]) -> Layout:
     """
     Converts the bounding_box part of a gds file at gds_file to a Caesarea Layout.
 
@@ -94,6 +95,7 @@ def slice_gds_to_layout(gds_file: Path, bounding_box: list[tuple[float, float]],
 
     return gds_to_layout(sliced, metal_layers, via_layers)
 
+
 def align_polygons_to_origin(polygons: list[Polygon]) -> list[Polygon]:
     """
     Translates all polygons by the same x,y, such that there is at least one polygon with x = 0 and y = 0 (and there are no negative values).
@@ -106,40 +108,50 @@ def align_polygons_to_origin(polygons: list[Polygon]) -> list[Polygon]:
     return [polygon.translate(-min_x, -min_y) for polygon in polygons]
 
 
-
 def gds_to_layout(polygons: list[Polygon], metal_layers: set[int], via_layers: set[int]) -> Layout:
     metals = [gds_polygon_to_metal(polygon) for polygon in polygons if polygon.layer in metal_layers]
     vias = [gds_polygon_to_via(polygon) for polygon in polygons if polygon.layer in via_layers]
-    return Layout(metals = metals, vias = vias)
+    return Layout(metals=metals, vias=vias)
+
 
 def gds_polygon_to_metal(polygon: Polygon) -> Metal:
     vertices = [
         Point2D(point[0], point[1]) for point in polygon.points
     ]
     return Metal(
-        name = "",
+        name="",
         gds_layer=polygon.layer,
-        vertices = vertices,
+        vertices=vertices,
         signal_index=None
     )
+
+
 def gds_polygon_to_via(polygon: Polygon) -> Via:
     box = polygon.bounding_box()
     return Via(
-        name = "",
+        name="",
         gds_layer=polygon.layer,
-        rect = Rect2D(box[0][0], box[1][0], box[0][1], box[1][1]),
+        rect=Rect2D(box[0][0], box[1][0], box[0][1], box[1][1]),
     )
 
 
+def parse_gds_layout(gds_file: Path, bounding_box: CPolygon, metal_layers: set[int], via_layers: set[int]) -> Layout:
+    layout = slice_gds_to_layout(gds_file,
+                                 bounding_box,
+                                 metal_layers=metal_layers,
+                                 via_layers=via_layers
+                                 )
+    with_layers = inflate_layout(layout)
+    return trace_signals(with_layers)
 
 
 @measure_time
 def main():
     layout = slice_gds_to_layout(Path("test_gds_1.gds"),
-                    [(1200, 730), (1200, 775), (1390, 775), (1390, 762), (1210, 762), (1210, 730)],
-                  metal_layers={61, 62, 63, 64, 65, 66},
-                  via_layers={70, 71, 72, 73, 74}
-                  )
+                                 [(1200, 730), (1200, 775), (1390, 775), (1390, 762), (1210, 762), (1210, 730)],
+                                 metal_layers={61, 62, 63, 64, 65, 66},
+                                 via_layers={70, 71, 72, 73, 74}
+                                 )
     with_layers = inflate_layout(layout)
     with_signal = trace_signals(with_layers)
     plotly_plot_layout(with_signal, show_text=False)
@@ -147,4 +159,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -1,32 +1,17 @@
 from dataclasses import dataclass
 from numpy import array, poly, unique
-import triangle
 import matplotlib.pyplot as plt
 
-from layout import Point2D
+from geometry.geometry import Point2D, Point3D, Polygon2D, TriangleIndices
+from geometry.geometry_utils import triangulate_polygon
 from utils import distinct
 
 
 @dataclass
-class Point3D:
-    x: float
-    y: float
-    z: float
-
-
-@dataclass
-class Triangle:
-    a_index: int
-    b_index: int
-    c_index: int
-
-
-@dataclass
-class Mesh:
+class AnnotatedMesh:
     vertices: list[Point3D]
-    triangles: list[Triangle]
+    triangles: list[TriangleIndices]
     color: str
-    # edge_color: str
     alpha: float
     name: str
 
@@ -38,11 +23,11 @@ class ExtrudedPolygon:
     """
     z_base: float
     z_top: float
-    vertices: list[Point2D]
+    vertices: Polygon2D
     color: str
-    # edge_color: str
     alpha: float
     name: str
+
 
 problematic_mesh = [
     (1200, 735.22),
@@ -52,27 +37,22 @@ problematic_mesh = [
     (1200.0, 735.22)
 ]
 
-def polygon_to_mesh(polygon: ExtrudedPolygon) -> Mesh:
+
+def polygon_to_mesh(polygon: ExtrudedPolygon) -> AnnotatedMesh:
     unique_vertices = distinct(polygon.vertices)
     vertex_count = len(unique_vertices)
-    # Define the S-shaped polygon vertices
-    input_vertices = {
-        'vertices': [(vertex.x, vertex.y) for vertex in unique_vertices],
-        # Every vertex is connected to the next
-        'segments': [[i, i + 1 if i < vertex_count - 1 else 0] for i in range(vertex_count)]
-    }
 
     # Compute the Constrained Delaunay Triangulation
-    triangulation = triangle.triangulate(input_vertices, 'p')
+    triangulation = triangulate_polygon(polygon.vertices)
 
-    base_vertices = [Point3D(vertex[0], vertex[1], polygon.z_base) for vertex in triangulation["vertices"]]
-    base_triangles = [Triangle(triangle[0], triangle[1], triangle[2]) for triangle in triangulation["triangles"]]
+    base_vertices = [Point3D(vertex.x, vertex.y, polygon.z_base) for vertex in triangulation.vertices]
+    base_triangles = triangulation.triangles
 
-    top_vertices = [Point3D(vertex[0], vertex[1], polygon.z_top) for vertex in triangulation["vertices"]]
+    top_vertices = [Point3D(vertex.x, vertex.y, polygon.z_top) for vertex in triangulation.vertices]
     # Make the top triangles match with the top vertices by shifting them to start from the indices of the top vertices.
     top_shift = len(base_vertices)
     top_triangles = [
-        Triangle(triangle[0] + top_shift, triangle[1] + top_shift, triangle[2] + top_shift) for triangle in triangulation["triangles"]
+        TriangleIndices(triangle.a_index + top_shift, triangle.b_index + top_shift, triangle.c_index + top_shift) for triangle in triangulation.triangles
     ]
 
     # Vertices that the side polygons need to to attach to. These are simple to calculate and don't require triangulation.
@@ -87,7 +67,7 @@ def polygon_to_mesh(polygon: ExtrudedPolygon) -> Mesh:
     # Sides are composed of rectangles, so we need two triangles for each side
     side_left_triangles = [
 
-        Triangle(
+        TriangleIndices(
             # Bottom left
             side_bottom_shift + i,
             # Bottom right
@@ -99,7 +79,7 @@ def polygon_to_mesh(polygon: ExtrudedPolygon) -> Mesh:
 
     side_right_triangles = [
         # The order here is very important, something needs to line up with the left triangle part, I'm not quite sure how it works.
-        Triangle(
+        TriangleIndices(
             # Top left
             side_top_shift + i,
             # Bottom right
@@ -119,4 +99,4 @@ def polygon_to_mesh(polygon: ExtrudedPolygon) -> Mesh:
     # plt.triplot(triangulation['vertices'][:, 0], triangulation['vertices'][:, 1], triangulation['triangles'])
     # plt.show()
 
-    return Mesh(output_vertices, output_triangles, color=polygon.color, alpha=polygon.alpha, name=polygon.name)
+    return AnnotatedMesh(output_vertices, output_triangles, color=polygon.color, alpha=polygon.alpha, name=polygon.name)

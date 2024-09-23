@@ -5,11 +5,11 @@ from pyparsing import col
 from shapely import Polygon, delaunay_triangles
 
 from layout import Layout, Point2D
-from polygon_to_mesh import Mesh, ExtrudedPolygon, polygon_to_mesh
+from polygon_to_mesh import AnnotatedMesh, ExtrudedPolygon, polygon_to_mesh
 from utils import none_check
 
 
-def mesh_text(mesh: Mesh) -> go.Scatter3d:
+def mesh_text(mesh: AnnotatedMesh) -> go.Scatter3d:
     x_coords = [point.x for point in mesh.vertices]
     y_coords = [point.y for point in mesh.vertices]
     z_coords = [point.z for point in mesh.vertices]
@@ -29,7 +29,7 @@ def mesh_text(mesh: Mesh) -> go.Scatter3d:
     )
 
 
-def to_plotly_mesh(mesh: Mesh, showing_text: bool) -> go.Mesh3d:
+def to_plotly_mesh(mesh: AnnotatedMesh, showing_text: bool) -> go.Mesh3d:
     # Extract x, y, z coordinates
     x = [vertex.x for vertex in mesh.vertices]
     y = [vertex.y for vertex in mesh.vertices]
@@ -54,7 +54,7 @@ def to_plotly_mesh(mesh: Mesh, showing_text: bool) -> go.Mesh3d:
     )
 
 
-def plotly_plot_meshes(title: str, meshes: list[Mesh], show_text: bool):
+def plotly_plot_meshes(title: str, meshes: list[AnnotatedMesh], show_text: bool):
 
     # Create the layout
     layout = go.Layout(

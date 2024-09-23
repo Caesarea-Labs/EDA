@@ -1,6 +1,6 @@
-from Draw import plot_layout
-from Layout import Metal, Via, Point2D, Rect2D, Layout
+from layout import Via,Rect2D, Layout
 from Shapes import s_shape, lamed_shape, L_shape, rect_shape
+from plotly_layout import plotly_plot_layout
 
 connection = Via(
     layer=1,
@@ -48,4 +48,4 @@ layout = Layout([
 ], [
 
 ])
-plot_layout(layout, 15)
+plotly_plot_layout(layout, show_text=False)

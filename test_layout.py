@@ -1,7 +1,5 @@
-from Draw import plot_layout
 from layout import Layout, Via, Rect2D
 from Shapes import L_shape, lamed_shape, rect_shape
-from plotly_layout_old import plot_layout_plotly
 from plotly_layout import plotly_plot_layout
 
 shape = lamed_shape(1.1, 3, 2, 2)
