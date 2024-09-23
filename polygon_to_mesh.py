@@ -1,9 +1,10 @@
 from dataclasses import dataclass
-from numpy import poly
+from numpy import array, poly, unique
 import triangle
 import matplotlib.pyplot as plt
 
 from layout import Point2D
+from utils import distinct
 
 
 @dataclass
@@ -31,7 +32,7 @@ class Mesh:
 
 
 @dataclass
-class Polygon3D:
+class ExtrudedPolygon:
     """
     Generic representation of any kind of polygon that spans across multiple z values
     """
@@ -43,12 +44,20 @@ class Polygon3D:
     alpha: float
     name: str
 
+problematic_mesh = [
+    (1200, 735.22),
+    (1200.43, 735.22),
+    (1200.43, 735.0),
+    (1200.0, 730.0),
+    (1200.0, 735.22)
+]
 
-def polygon_to_mesh(polygon: Polygon3D) -> Mesh:
-    vertex_count = len(polygon.vertices)
+def polygon_to_mesh(polygon: ExtrudedPolygon) -> Mesh:
+    unique_vertices = distinct(polygon.vertices)
+    vertex_count = len(unique_vertices)
     # Define the S-shaped polygon vertices
     input_vertices = {
-        'vertices': [(vertex.x, vertex.y) for vertex in polygon.vertices],
+        'vertices': [(vertex.x, vertex.y) for vertex in unique_vertices],
         # Every vertex is connected to the next
         'segments': [[i, i + 1 if i < vertex_count - 1 else 0] for i in range(vertex_count)]
     }
@@ -67,8 +76,8 @@ def polygon_to_mesh(polygon: Polygon3D) -> Mesh:
     ]
 
     # Vertices that the side polygons need to to attach to. These are simple to calculate and don't require triangulation.
-    side_bottom_vertices = [Point3D(vertex.x, vertex.y, polygon.z_base) for vertex in polygon.vertices]
-    side_top_vertices = [Point3D(vertex.x, vertex.y, polygon.z_top) for vertex in polygon.vertices]
+    side_bottom_vertices = [Point3D(vertex.x, vertex.y, polygon.z_base) for vertex in unique_vertices]
+    side_top_vertices = [Point3D(vertex.x, vertex.y, polygon.z_top) for vertex in unique_vertices]
 
     # Get a pointer to the part where we have the side_bottom_vertices
     side_bottom_shift = top_shift + len(top_vertices)

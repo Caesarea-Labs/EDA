@@ -5,6 +5,8 @@ import math
 import time
 from typing import Any, Callable, Optional, TypeVar, cast
 
+from matplotlib.pylab import f
+
 
 T = TypeVar("T")
 def none_check(value: Optional[T]) -> T:
@@ -48,3 +50,16 @@ def min_of(arr: list[T], key: Callable[[T], R]) -> R:
         if value < min:
             min = value
     return cast(R, min)
+
+def distinct(arr: list[T]) -> list[T]:
+    """
+    Returns all distinct values of the array, by checking their equality. 
+    """
+    existing = set()
+    result = []
+    for element in arr:
+        if element not in existing:
+            result.append(element)
+            existing.add(element)
+
+    return result

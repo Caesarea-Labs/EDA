@@ -7,6 +7,7 @@ from Draw import plot_layout
 from layer_z_placer import inflate_layout
 from layout import Layout, Metal, Point2D, Rect2D, Via
 from cpu_slicing import GdsPolygonBB, cut_polygons, get_contained_rectangles
+from plotly_layout import plotly_plot_layout
 from signal_tracer import trace_signals
 from utils import max_of, measure_time, min_of
 
@@ -32,7 +33,6 @@ def cache_polygons(polygons: list[Polygon], path: Path):
     new_gds.write_gds(path)
 
 def get_filtered_polygons(gds_path: Path, bounding_box: list[tuple[float, float]], metal_layers: set[int], via_layers: set[int]) -> list[Polygon]:
-
     # We cache the filtered polygons in the cache dir
     filtered_gds_cache = cache_dir.joinpath("filtered.gds")
     if cache_dir.exists():
@@ -142,7 +142,7 @@ def main():
                   )
     with_layers = inflate_layout(layout)
     with_signal = trace_signals(with_layers)
-    plot_layout(with_signal)
+    plotly_plot_layout(with_signal, show_text=False)
 
 
 if __name__ == "__main__":

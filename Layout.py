@@ -7,7 +7,7 @@ from shapely import Polygon, STRtree
 from utils import none_check
 
 
-@dataclass
+@dataclass(frozen=True, eq=True)
 class Point2D:
     x: float
     y: float
@@ -63,7 +63,7 @@ class LayoutPolygon:
     name: str
 
 
-@dataclass(eq = False)
+@dataclass(eq=False)
 class Metal(LayoutPolygon):
     """
     A 2 dimensional shape of a metal, given by its vertices.
@@ -81,6 +81,7 @@ class Metal(LayoutPolygon):
     """String identifying the metal"""
     gds_layer: Optional[int] = None
     layer: Optional[int] = None
+
 
 @dataclass
 class Via(LayoutPolygon):
@@ -116,8 +117,9 @@ class Layout:
     """
 
 
-
 MetalIndex = dict[int, STRtree]
+
+
 def index_metals_by_gds_layer(layout: Layout) -> MetalIndex:
     """
     Returns a map of metals by gds_layer. 
@@ -140,7 +142,6 @@ def index_metals_by_gds_layer(layout: Layout) -> MetalIndex:
     # Optimize layers into STRtrees
     tree_index: dict[int, STRtree] = {layer: STRtree(polygons) for layer, polygons in polygon_list_index.items()}
     return tree_index
-
 
 
 def to_shapely_polygon(vertices: list[Point2D]) -> Polygon:

@@ -9,13 +9,14 @@ from layout import Layout, Metal, Point2D, Via
 from test_layout import test_layout_const
 from utils import max_of, none_check
 
+
 def trace_signals(layout: Layout) -> Layout:
     """Will return a new layout with the MetalPolygons having the signal_index value set, to match how the metals and vias connect to each other. 
     This requires having the layer field set."""
 
     new_layout = copy.deepcopy(layout)
-    # The signals tracing problem can be easily converted to the problem of connected components in an undirected graph. 
-    # A 'signal' is essentially a connected component in a graph where the nodes are metals, and edges are physical connections between metals. 
+    # The signals tracing problem can be easily converted to the problem of connected components in an undirected graph.
+    # A 'signal' is essentially a connected component in a graph where the nodes are metals, and edges are physical connections between metals.
     # These physical connections boil down to a via connected to two or more metals, each link between pairs of metals producing at least one edge.
     # In the future, we will also consider intersections or exact adjacency of metals as links/edges between models.
     signal_graph = signals_to_graph(new_layout)
@@ -39,6 +40,7 @@ def signals_to_graph(layout: Layout) -> Graph:
 
     metals_by_layer = index_metals_by_layer(layout)
 
+    # Add intersections with vias
     for via in layout.vias:
         # Usually bottom_connections contains the 1 metal connected to the bottom of the via,
         #  and top_connections contains the 1 metal connected to the top of the via, and there is just 1 pair we need to connect.
@@ -50,6 +52,16 @@ def signals_to_graph(layout: Layout) -> Graph:
         # If there's a connection between two metals, add that connection as an edge.
         for start, end in combinations(all_connections, 2):
             graph.add_edge(start, end)
+
+    # Add intersections metal-to-metal on the same layer
+    for layer_metals in metals_by_layer:
+        for metal in layer_metals[1]:
+            intersecting_metals = get_intersecting_metals(metal.vertices, layer_metals)
+            for intersecting in intersecting_metals:
+                # No point in connecting a metal to itself
+                if intersecting != metal:
+                    graph.add_edge(metal, intersecting)
+
 
     return graph
 
@@ -75,7 +87,8 @@ def index_metals_by_layer(layout: Layout) -> list[tuple[STRtree, list[Metal]]]:
 
     # Optimize layers into STRtrees
     tree_index: list[tuple[STRtree, list[Metal]]] = [
-        (STRtree([Polygon(metal.vertices) for metal in metals]), metals) for metals in polygon_list_index]
+        (STRtree([Polygon(metal.vertices) for metal in metals]), metals) for metals in polygon_list_index
+    ]
     return tree_index
 
 # def create_str_trees(layers: list[list[Metal]]) -> list[STRtree]:
@@ -83,7 +96,8 @@ def index_metals_by_layer(layout: Layout) -> list[tuple[STRtree, list[Metal]]]:
     # TODO: convert polygon to their polygon
     # return [STRtree(list) for list in layers]
 
-def test_layout_without_signals() -> Layout: 
+
+def test_layout_without_signals() -> Layout:
     """
     test layout converted to signal "hard mode", with no signal information.
     """
@@ -95,4 +109,4 @@ def test_layout_without_signals() -> Layout:
 if __name__ == "__main__":
     no_signals = test_layout_without_signals()
     traced = trace_signals(no_signals)
-    plot_layout(traced, 18, 5)
+    plot_layout(traced)
