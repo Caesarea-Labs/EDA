@@ -18,6 +18,8 @@ Polygon2D = list[Point2D]
 """
 A 2d polygon represented by a list of vertices connected in order. 
 """
+def create_polygon(points: list[tuple[float,float]]) -> Polygon2D:
+    return Polygon2D([Point2D(p[0], p[1]) for p in points])
 
 @dataclass
 class Point3D:

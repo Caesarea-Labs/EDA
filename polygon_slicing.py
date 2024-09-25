@@ -1,23 +1,24 @@
 from gdstk import Polygon
 import gdstk
 import shapely
+from geometry.geometry import Polygon2D
 from utils import max_of, measure_time, min_of
 
 GdsPolygonBB = tuple[tuple[float, float], tuple[float, float]]
 
 @measure_time
 def get_contained_rectangles(rectangles: list[GdsPolygonBB], 
-                                   bounding_box: list[tuple[int, int]], exclusive: bool) -> list[int]:
+                                   bounding_box: Polygon2D, exclusive: bool) -> list[int]:
     """
     Returns the indices of rectangles that exist inside the passed bounding box.
     If exclusive is true, returns only rectangles that are entirely in the bounding box.
     If exclusive is false, return rectangles that only intersect with the bounding box as well.
     """
     # (bbox_x_min, bbox_y_min), (bbox_x_max, bbox_y_max) = bounding_box
-    bbox_x_min = min_of(bounding_box, key=lambda bb: bb[0])
-    bbox_y_min = min_of(bounding_box, key=lambda bb: bb[1])
-    bbox_x_max = max_of(bounding_box, key=lambda bb: bb[0])
-    bbox_y_max = max_of(bounding_box, key=lambda bb: bb[1])
+    bbox_x_min = min_of(bounding_box, key=lambda bb: bb.x)
+    bbox_y_min = min_of(bounding_box, key=lambda bb: bb.y)
+    bbox_x_max = max_of(bounding_box, key=lambda bb: bb.x)
+    bbox_y_max = max_of(bounding_box, key=lambda bb: bb.y)
     shapely_bounding_box = shapely.Polygon(bounding_box)
     shapely.prepare(shapely_bounding_box)
 
@@ -109,11 +110,11 @@ def get_contained_rectangles(rectangles: list[GdsPolygonBB],
 
     return result
 
-def cut_polygons(polygons: list[Polygon], cut_shape: list[tuple[float,float]]) -> list[Polygon]:
+def cut_polygons(polygons: list[Polygon], cut_shape: Polygon2D) -> list[Polygon]:
     """
     Returns the intersecting part of the polygons with the cut shape
     """
-    shapely_cut = shapely.Polygon(cut_shape)
+    shapely_cut = shapely.Polygon([(p.x, p.y) for p in cut_shape])
     shapely.prepare(shapely_cut)
     return [cut_polygon(polygon, shapely_cut) for polygon in polygons]
 

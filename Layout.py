@@ -4,6 +4,7 @@ from typing import Optional, Iterator
 from numpy import vecdot
 from shapely import Polygon, STRtree
 
+from geometry.geometry import Point2D, Polygon2D, Rect2D
 from utils import max_of, none_check
 
 
@@ -51,7 +52,7 @@ class Metal(LayoutPolygon):
     A 2 dimensional shape of a metal, given by its vertices.
     """
 
-    vertices: list[Point2D]
+    polygon: Polygon2D
 
     signal_index: Optional[int]
     """
@@ -80,7 +81,7 @@ class Via(LayoutPolygon):
     layer: Optional[int] = None
 
     def __post_init__(self):
-        self.vertices = self.rect.vertices()
+        self.vertices = self.rect.as_polygon()
 
 
 @dataclass
@@ -132,7 +133,7 @@ def index_metals_by_gds_layer(layout: Layout) -> MetalIndex:
     for metal in layout.metals:
         layer = none_check(metal.gds_layer)
         existing_list = polygon_list_index.get(layer, None)
-        polygon = to_shapely_polygon(metal.vertices)
+        polygon = to_shapely_polygon(metal.polygon)
         if existing_list is None:
             # No polygons in layer - add a new list for layer
             polygon_list_index[layer] = [polygon]

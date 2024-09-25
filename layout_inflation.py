@@ -3,7 +3,7 @@ from typing import Tuple
 
 from shapely import STRtree, Polygon
 
-from layout import Layout, Metal, MetalIndex, Point2D, Via, index_metals_by_gds_layer, to_shapely_polygon
+from layout import Layout, Metal, MetalIndex, Via, index_metals_by_gds_layer, to_shapely_polygon
 from plotly_layout import plotly_plot_layout
 from test_layout import test_layout_const
 from utils import none_check
@@ -15,7 +15,7 @@ def scrambled_test_layout() -> Layout:
     """
     test layout converted to "hard mode", with no proper information on layers, but with less-reliable gds_layer information.
     """
-    new_metals = [Metal(vertices=metal.vertices, layer=None, signal_index=metal.signal_index, name=metal.name,
+    new_metals = [Metal(polygon=metal.polygon, layer=None, signal_index=metal.signal_index, name=metal.name,
                         gds_layer=none_check(metal.layer) + 10) for metal in test_layout_const.metals]
     new_vias = [Via(
                 gds_layer=none_check(via.layer) + 20,

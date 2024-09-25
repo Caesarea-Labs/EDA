@@ -4,7 +4,8 @@ import numpy as np
 from pyparsing import col
 from shapely import Polygon, delaunay_triangles
 
-from layout import Layout, Point2D
+from geometry.geometry import Point2D
+from layout import Layout
 from polygon_to_mesh import AnnotatedMesh, ExtrudedPolygon, polygon_to_mesh
 from utils import none_check
 
@@ -98,7 +99,7 @@ def plotly_plot_layout(layout: Layout, show_text: bool):
             z_top=none_check(metal.layer) + 0.25,
             color=fill_colors[none_check(metal.signal_index) % len(fill_colors)],
             # edge_color=edge_colors[metal.signal_index % len(edge_colors)],
-            vertices=metal.vertices,
+            vertices=metal.polygon,
             alpha=0.5,
             name=metal.name
         )
@@ -109,7 +110,7 @@ def plotly_plot_layout(layout: Layout, show_text: bool):
             z_base=none_check(via.layer),
             z_top=none_check(via.layer) + 1,
             color="black",
-            vertices=via.rect.vertices(),
+            vertices=via.rect.as_polygon(),
             alpha=0.3,
             name=via.name
         )

@@ -56,7 +56,7 @@ def signals_to_graph(layout: Layout) -> Graph:
     # Add intersections metal-to-metal on the same layer
     for layer_metals in metals_by_layer:
         for metal in layer_metals[1]:
-            intersecting_metals = get_intersecting_metals(metal.vertices, layer_metals)
+            intersecting_metals = get_intersecting_metals(metal.polygon, layer_metals)
             for intersecting in intersecting_metals:
                 # No point in connecting a metal to itself
                 if intersecting != metal:
@@ -87,7 +87,7 @@ def index_metals_by_layer(layout: Layout) -> list[tuple[STRtree, list[Metal]]]:
 
     # Optimize layers into STRtrees
     tree_index: list[tuple[STRtree, list[Metal]]] = [
-        (STRtree([Polygon(metal.vertices) for metal in metals]), metals) for metals in polygon_list_index
+        (STRtree([Polygon(metal.polygon) for metal in metals]), metals) for metals in polygon_list_index
     ]
     return tree_index
 
@@ -101,7 +101,7 @@ def test_layout_without_signals() -> Layout:
     """
     test layout converted to signal "hard mode", with no signal information.
     """
-    new_metals = [Metal(vertices=metal.vertices, layer=metal.layer, signal_index=None, name=metal.name,
+    new_metals = [Metal(polygon=metal.polygon, layer=metal.layer, signal_index=None, name=metal.name,
                         gds_layer=metal.gds_layer) for metal in test_layout_const.metals]
     return Layout(new_metals, test_layout_const.vias)
 

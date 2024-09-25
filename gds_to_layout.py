@@ -2,8 +2,9 @@ from pathlib import Path
 from gdstk import Cell, Library, Polygon, Reference, read_gds
 from typing import Tuple, cast
 
-from layer_z_placer import inflate_layout
-from layout import Layout, Metal, Point2D, Rect2D, Via
+from geometry.geometry import Point2D, Polygon2D, Rect2D, create_polygon
+from layout_inflation import inflate_layout
+from layout import Layout, Metal, Via
 from polygon_slicing import GdsPolygonBB, cut_polygons, get_contained_rectangles
 from plotly_layout import plotly_plot_layout
 from signal_tracer import trace_signals
@@ -35,7 +36,7 @@ def cache_polygons(polygons: list[Polygon], path: Path):
     new_gds.write_gds(path)
 
 
-def get_filtered_polygons(gds_path: Path, bounding_box: list[tuple[float, float]], metal_layers: set[int], via_layers: set[int]) -> list[Polygon]:
+def get_filtered_polygons(gds_path: Path, bounding_box: Polygon2D, metal_layers: set[int], via_layers: set[int]) -> list[Polygon]:
     # We cache the filtered polygons in the cache dir
     filtered_gds_cache = cache_dir.joinpath("filtered.gds")
     if cache_dir.exists():
@@ -76,7 +77,7 @@ def get_filtered_polygons(gds_path: Path, bounding_box: list[tuple[float, float]
     return contained_polygons
 
 
-def slice_gds_to_layout(gds_file: Path, bounding_box: CPolygon, metal_layers: set[int], via_layers: set[int]) -> Layout:
+def slice_gds_to_layout(gds_file: Path, bounding_box: Polygon2D, metal_layers: set[int], via_layers: set[int]) -> Layout:
     """
     Converts the bounding_box part of a gds file at gds_file to a Caesarea Layout.
 
@@ -121,7 +122,7 @@ def gds_polygon_to_metal(polygon: Polygon) -> Metal:
     return Metal(
         name="",
         gds_layer=polygon.layer,
-        vertices=vertices,
+        polygon=vertices,
         signal_index=None
     )
 
@@ -135,7 +136,7 @@ def gds_polygon_to_via(polygon: Polygon) -> Via:
     )
 
 
-def parse_gds_layout(gds_file: Path, bounding_box: CPolygon, metal_layers: set[int], via_layers: set[int]) -> Layout:
+def parse_gds_layout(gds_file: Path, bounding_box: Polygon2D, metal_layers: set[int], via_layers: set[int]) -> Layout:
     layout = slice_gds_to_layout(gds_file,
                                  bounding_box,
                                  metal_layers=metal_layers,
@@ -148,7 +149,7 @@ def parse_gds_layout(gds_file: Path, bounding_box: CPolygon, metal_layers: set[i
 @measure_time
 def main():
     layout = slice_gds_to_layout(Path("test_gds_1.gds"),
-                                 [(1200, 730), (1200, 775), (1390, 775), (1390, 762), (1210, 762), (1210, 730)],
+                                 create_polygon([(1200, 730), (1200, 775), (1390, 775), (1390, 762), (1210, 762), (1210, 730)]),
                                  metal_layers={61, 62, 63, 64, 65, 66},
                                  via_layers={70, 71, 72, 73, 74}
                                  )
