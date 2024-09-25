@@ -1,10 +1,13 @@
-from typing import Callable, Generic, TypeVar
+from itertools import combinations
+from typing import Callable, Generic, TypeVar, cast
+import numpy as np
 from shapely import Polygon as ShapelyPolygon, STRtree
 import shapely
 from shapely.geometry.base import BaseGeometry
 from geometry.geometry import Mesh2D, Point2D, Polygon2D, TriangleIndices
 from utils import distinct
 import triangle
+from scipy.spatial import ConvexHull
 
 
 def triangulate_polygon(polygon: Polygon2D) -> Mesh2D:
@@ -75,6 +78,34 @@ class PolygonIndex(Generic[T]):
         
         return shapely.unary_union([shapely.intersection(self.shapely_polygons[i], polygon) for i in indices])
 
+
+def distance(x1: float, y1: float, x2: float, y2: float) -> float:
+    """
+    Returns the euclidean distance between two points
+    """
+    return ((x1-x2)**2+(y1-y2)**2)**0.5
+
+def max_distance_between_points(points: list[Point2D]) -> float:
+    """
+    Returns the maximum distance between any 2 points in the given list, in O(nlogn) time
+    """
+
+    # Convert the list of points into a numpy array
+    np_points = np.array([(point.x,point.y) for point in points])
+    
+    # Compute the convex hull
+    hull = ConvexHull(np_points)
+    
+    # Extract the vertices of the convex hull
+    hull_points = np_points[hull.vertices]
+    
+    # Compute the maximum distance between any pair of hull points
+    max_dist = 0
+    for p1, p2 in combinations(hull_points, 2):
+        dist = cast(float, np.linalg.norm(p1 - p2))  # Euclidean distance
+        max_dist = max(max_dist, dist)
+    
+    return max_dist
 
 # def fast_get_intersecting(polygon_cache: STRtree, associated_list: list[T], polygon: ShapelyPolygon) -> list[T]:
 #     """

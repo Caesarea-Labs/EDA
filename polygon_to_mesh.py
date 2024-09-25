@@ -14,6 +14,7 @@ class AnnotatedMesh:
     color: str
     alpha: float
     name: str
+    group_name: str
 
 
 @dataclass
@@ -27,6 +28,7 @@ class ExtrudedPolygon:
     color: str
     alpha: float
     name: str
+    group_name: str
 
 
 problematic_mesh = [
@@ -99,4 +101,4 @@ def polygon_to_mesh(polygon: ExtrudedPolygon) -> AnnotatedMesh:
     # plt.triplot(triangulation['vertices'][:, 0], triangulation['vertices'][:, 1], triangulation['triangles'])
     # plt.show()
 
-    return AnnotatedMesh(output_vertices, output_triangles, color=polygon.color, alpha=polygon.alpha, name=polygon.name)
+    return AnnotatedMesh(output_vertices, output_triangles, color=polygon.color, alpha=polygon.alpha, name=polygon.name, group_name=polygon.group_name)

@@ -7,13 +7,14 @@ from shapely import STRtree, box
 from gds_to_layout import parse_gds_layout
 from genetic_utils import sample_random_point
 from geometry.geometry import Point2D, Polygon2D, create_polygon
-from geometry.geometry_utils import PolygonIndex
+from geometry.geometry_utils import PolygonIndex, distance, max_distance_between_points
 from layout import Layout, Metal, to_shapely_polygon
 import numpy as np
 import cv2
 from numpy.typing import NDArray
-from geneticalgorithm import geneticalgorithm as ga
+from geneticalgorithm2 import geneticalgorithm2 as ga
 import matplotlib.pyplot as plt
+from geneticalgorithm2 import Generation
 
 from utils import max_of, min_of, none_check
 
@@ -238,6 +239,8 @@ def calculate_bounds(layout: Layout) -> list[list[float]]:
     ]
 
 
+
+
 if __name__ == "__main__":
     via_size = 0.5
     bounds: Polygon2D = create_polygon([(1200, 730), (1200, 775), (1390, 775), (1390, 762), (1210, 762), (1210, 730)])
@@ -249,14 +252,9 @@ if __name__ == "__main__":
     )
     signal_a = 0
     signal_b = 5
-    # reward_mask1 = Build_Reward_mask(layout, bounds, signal_num=signal_a)
-    # reward_mask2 = Build_Reward_mask(layout, bounds, signal_num=signal_b)
-    # cost_mask = Build_Cost_mask(layout, bounds, signal_a, signal_b)
-    # cost_mask[0][0]
-    # shape = cost_mask[0].shape
-
     metal_layers = range(layout.layer_count())
-    Num_generation = 200
+    Num_generation = 10000
+    # TODO: plot out the result via
     initial_population = Generate_Initial_Population(layout, Num_generation, signal_a, signal_b)
 
     def metal_polygon(metal: Metal) -> Polygon2D:
@@ -264,8 +262,6 @@ if __name__ == "__main__":
 
     # Setup all indices for fast access
     all_metals = PolygonIndex([metal for metal in layout.metals], metal_polygon)
-    # signal_a_metals = PolygonIndex([metal for metal in layout.metals if metal.signal_index == signal_a], metal_polygon)
-    # signal_b_metals = PolygonIndex([metal for metal in layout.metals if metal.signal_index == signal_b], metal_polygon)
 
     metals_by_layer = layout.metals_by_layer()
     signal_a_metals_by_layer = [
@@ -275,15 +271,25 @@ if __name__ == "__main__":
         PolygonIndex([metal for metal in layer_metals if metal.signal_index == signal_b], metal_polygon) for layer_metals in metals_by_layer
     ]
 
-    algorithm_param = {'initial_population': initial_population,
+    algorithm_param = {
                        'max_num_iteration': 100,
                        'population_size': Num_generation,
                        'mutation_probability': 0.1,
                        'elit_ratio': 0.01,
-                       'crossover_probability': 0.5,
+                    #    'crossover_probability': 0.5,
                        'parents_portion': 0.3,
                        'crossover_type': 'uniform',
                        'max_iteration_without_improv': None}
+
+    varbound = np.array(calculate_bounds(layout))
+    model = ga(dimension=6, variable_type=('real', 'real', 'int', 'real', 'real', 'int'),
+               variable_boundaries=varbound, algorithm_parameters=algorithm_param
+               )
+    # model.set_function_multiprocess(cost_func, n_jobs=-1)
+    print("Running GA...")
+
+    all_points = [point for metal in layout.metals for point in metal.polygon]
+    max_distance = max_distance_between_points(all_points)
 
     def cost_reward(x: float, y: float, layer: int, signal_index: list[PolygonIndex[Metal]]) -> tuple[float, float]:
         # Construct a via to see what it would intersect with if this spot would have been chosen
@@ -297,32 +303,13 @@ if __name__ == "__main__":
         #  If the via doesn't intersect with the signal at all, this would be 0 and a via here will not be considered.
         # If it does intersect but partially, this will have a small value,
         # If it fully intersects, this will have the maximum possible vaue.
-        reward = connection_to_signal.area
-
-        # for i in range(layer, len(metal_layers)):
-        #     layer_values = cost_mask[i]
-        #     start_row = (x-20)
-        #     start_col = (x+20)
-        #     end_row = (y-20)
-        #     end_col = (y+20)
-        #     value = layer_values[start_row:start_col, end_row:end_col]
-        #     first_sum: NDArray[np.float64] = cast(NDArray[np.float64], sum(value))
-
-        #     cost += sum(first_sum)
-        # reward = 0
-        # if for_first_signal:
-        #     reward = sum(sum(reward_mask1[layer][(x-20):(x+20), (y-20):(y+20)]))  # type: ignore
-        #     for i in range(layer, len(metal_layers)):
-        #         cost += sum(sum(reward_mask2[i][(x-20):(x+20), (y-20):(y+20)]))  # type: ignore
-        # else:
-        #     reward = sum(sum(reward_mask2[layer][(x-20):(x+20), (y-20):(y+20)]))  # type: ignore
-        #     for i in range(layer, len(metal_layers)):
-        #         cost += sum(sum(reward_mask1[i][(x-20):(x+20), (y-20):(y+20)]))  # type: ignore
-
+        # Divie by via_size^2 to normalize the value compared to the best result, which is via_size^2.
+        reward = connection_to_signal.area / (via_size ** 2)
         return cost, reward
 
-    # TODO: problem right now is that the X,Y values are way off. layer value seems ok.
-    def cost_func(X: list[float]):
+
+
+    def cost_func(X: NDArray[np.float64]) -> float:
         x1 = int(X[0])
         y1 = int(X[1])
         l1 = int(X[2])
@@ -332,27 +319,51 @@ if __name__ == "__main__":
         cost1, reward1 = cost_reward(x1, y1, l1, signal_a_metals_by_layer)
         cost2, reward2 = cost_reward(x2, y2, l2, signal_b_metals_by_layer)
         cost = cost1+cost2
-        reward = 100*(reward1+reward2)
+        reward = (reward1+reward2)
         # L = ((x1-x2)**2+(y1-y2)**2)**0.5
         # L_cost = (L - 80)**2  # to prevent overlap between the two vias
         # alpha = 0.1
         if (cost > 0 or reward1 == 0 or reward2 == 0):
             return cost
         else:
-            return -reward
+            d_cost = distance_cost(x1, y1, x2, y2)
+            return -reward + d_cost
             # + alpha*L_cost
 
-    varbound = np.array(calculate_bounds(layout))
-    vartype = np.array([['real'], ['real'], ['int'], ['real'], ['real'], ['int']])
-    model = ga(function=cost_func, dimension=6, variable_type_mixed=vartype,
-               variable_boundaries=varbound, algorithm_parameters=algorithm_param, function_timeout=1000)
-    print("Running GA...")
-    model.run()
 
-    x1 = initial_population[:, 0]
-    y1 = initial_population[:, 1]
-    x2 = initial_population[:, 3]
-    y2 = initial_population[:, 4]
+    def distance_cost(x1: float, y1: float, x2: float, y2: float) -> float:
+        d = distance(x1, y1, x2, y2)
+        # We optimize such that the distance will be as close as possible to via_size. 
+        # Divide by max_distance to normalize the value to the problem size. 
+        return abs(d - via_size) / max_distance
 
+    result = model.run(function=cost_func, function_timeout=1000, start_generation=Generation(variables= initial_population, scores= None))
+
+    # x1 = initial_population[:, 0]
+    # y1 = initial_population[:, 1]
+    # x2 = initial_population[:, 3]
+    # y2 = initial_population[:, 4]
+
+    # plt.plot(x1, y1, '*r', x2, y2, '*b')
+    # plt.show()
+
+    last_generation = none_check(result.last_generation.variables)
+
+    x1 = [result.variable[0]]
+    y1 = [result.variable[1]]  
+    x2 = [result.variable[3]]
+    y2 = [result.variable[4]]
+
+    # x1 = [result.]
+    # y1 = last_generation[:, 1]
+    # x2 = last_generation[:, 3]
+    # y2 = last_generation[:, 4]
+
+    polygons = [
+        point for metal in layout.metals
+        for point in metal.polygon
+    ]
+    plt.xlim(min_of(polygons, lambda p: p.x), max_of(polygons, lambda p: p.x))
+    plt.ylim(min_of(polygons, lambda p: p.y), max_of(polygons, lambda p: p.y))
     plt.plot(x1, y1, '*r', x2, y2, '*b')
     plt.show()

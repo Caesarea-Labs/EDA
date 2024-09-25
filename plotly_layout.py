@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from matplotlib import legend
 import plotly.graph_objects as go
 import numpy as np
 from pyparsing import col
@@ -30,33 +31,10 @@ def mesh_text(mesh: AnnotatedMesh) -> go.Scatter3d:
     )
 
 
-def to_plotly_mesh(mesh: AnnotatedMesh, showing_text: bool) -> go.Mesh3d:
-    # Extract x, y, z coordinates
-    x = [vertex.x for vertex in mesh.vertices]
-    y = [vertex.y for vertex in mesh.vertices]
-    z = [vertex.z for vertex in mesh.vertices]
 
-    a_indices = [triangle.a_index for triangle in mesh.triangles]
-    b_indices = [triangle.b_index for triangle in mesh.triangles]
-    c_indices = [triangle.c_index for triangle in mesh.triangles]
-
-    # Create the mesh trace to fill the sides with color using triangles
-    return go.Mesh3d(
-        x=x,
-        y=y,
-        z=z,
-        i=a_indices,
-        j=b_indices,
-        k=c_indices,
-        color=mesh.color,
-        opacity=mesh.alpha,
-        legendgroup=mesh.name,
-        showlegend=showing_text
-    )
 
 
 def plotly_plot_meshes(title: str, meshes: list[AnnotatedMesh], show_text: bool):
-
     # Create the layout
     layout = go.Layout(
         scene=dict(
@@ -69,6 +47,38 @@ def plotly_plot_meshes(title: str, meshes: list[AnnotatedMesh], show_text: bool)
     )
 
     data = []
+    taken_group_names = set()
+
+    def to_plotly_mesh(mesh: AnnotatedMesh, showing_text: bool) -> go.Mesh3d:
+        # Extract x, y, z coordinates
+        x = [vertex.x for vertex in mesh.vertices]
+        y = [vertex.y for vertex in mesh.vertices]
+        z = [vertex.z for vertex in mesh.vertices]
+
+        a_indices = [triangle.a_index for triangle in mesh.triangles]
+        b_indices = [triangle.b_index for triangle in mesh.triangles]
+        c_indices = [triangle.c_index for triangle in mesh.triangles]
+
+        # Make sure to only show legend once for each group
+        show_legend = mesh.group_name not in taken_group_names
+        if show_legend:
+            taken_group_names.add(mesh.group_name)
+
+        # Create the mesh trace to fill the sides with color using triangles
+        return go.Mesh3d(
+            x=x,
+            y=y,
+            z=z,
+            i=a_indices,
+            j=b_indices,
+            k=c_indices,
+            color=mesh.color,
+            opacity=mesh.alpha,
+            name=mesh.group_name,
+            legendgroup=mesh.group_name,
+            showlegend=show_legend
+            # showlegend=showing_text
+        )
 
     for mesh in meshes:
         data.append(to_plotly_mesh(mesh, showing_text=show_text))
@@ -101,7 +111,8 @@ def plotly_plot_layout(layout: Layout, show_text: bool):
             # edge_color=edge_colors[metal.signal_index % len(edge_colors)],
             vertices=metal.polygon,
             alpha=0.5,
-            name=metal.name
+            name=metal.name,
+            group_name=str(metal.signal_index)
         )
         meshes.append(polygon_to_mesh(polygon))
 
@@ -112,7 +123,8 @@ def plotly_plot_layout(layout: Layout, show_text: bool):
             color="black",
             vertices=via.rect.as_polygon(),
             alpha=0.3,
-            name=via.name
+            name=via.name,
+            group_name="vias"
         )
         meshes.append(polygon_to_mesh(polygon))
 
@@ -134,7 +146,7 @@ if __name__ == "__main__":
             Point2D(1, 1),  # Middle-left corner
             Point2D(0, 1)   # Back to bottom-left corner
         ],
-        color="blue", alpha=0.3, name="test1"
+        color="blue", alpha=0.3, name="test1", group_name="1"
     )
 
     polygon_2 = ExtrudedPolygon(
@@ -149,7 +161,7 @@ if __name__ == "__main__":
             Point2D(1, 1),  # Middle-left corner
             Point2D(0, 1)   # Back to bottom-left corner
         ],
-        color="blue", alpha=0.3, name="test2"
+        color="blue", alpha=0.3, name="test2", group_name="1"
     )
 
     plotly_plot_meshes(
@@ -158,5 +170,5 @@ if __name__ == "__main__":
             polygon_to_mesh(polygon_1),
             polygon_to_mesh(polygon_2),
         ],
-        show_text=True
+        show_text=False
     )
