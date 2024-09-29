@@ -51,6 +51,15 @@ def min_of(arr: list[T], key: Callable[[T], R]) -> R:
             min = value
     return cast(R, min)
 
+def average_of(arr: list[T], key: Callable[[T], float]) -> float:
+    return sum_of(arr, key) / len(arr)
+
+def sum_of(arr: list[T],  key: Callable[[T], float]) -> float:
+    sum = 0
+    for item in arr:
+        sum += key(item)
+    return sum
+
 def distinct(arr: list[T]) -> list[T]:
     """
     Returns all distinct values of the array, by checking their equality. 

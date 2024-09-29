@@ -4,8 +4,6 @@ from typing import Iterator
 from pyvista import Triangle
 
 
-
-
 @dataclass(frozen=True, eq=True)
 class Point2D:
     x: float
@@ -13,13 +11,17 @@ class Point2D:
 
     def __iter__(self) -> Iterator[float]:
         return iter((self.x, self.y))
-    
+
+
 Polygon2D = list[Point2D]
 """
 A 2d polygon represented by a list of vertices connected in order. 
 """
-def create_polygon(points: list[tuple[float,float]]) -> Polygon2D:
+
+
+def create_polygon(points: list[tuple[float, float]]) -> Polygon2D:
     return Polygon2D([Point2D(p[0], p[1]) for p in points])
+
 
 @dataclass
 class Point3D:
@@ -27,6 +29,8 @@ class Point3D:
     y: float
     z: float
 
+    def to_tuple(self) -> tuple[float, float, float]:
+        return (self.x, self.y, self.z)
 
 
 @dataclass
@@ -42,7 +46,8 @@ class Rect2D:
         """
         return [Point2D(self.x_start, self.y_start), Point2D(self.x_end, self.y_start), Point2D(self.x_end, self.y_end),
                 Point2D(self.x_start, self.y_end)]
-    
+
+
 @dataclass
 class Triangle2D:
     a: Point2D
@@ -51,11 +56,12 @@ class Triangle2D:
 
     def area(self) -> float:
         return 0.5 * abs(
-                self.a.x * (self.b.y - self.c.y) +
-                self.b.x * (self.c.y - self.a.y) +
-                self.c.x * (self.a.y - self.b.y)
+            self.a.x * (self.b.y - self.c.y) +
+            self.b.x * (self.c.y - self.a.y) +
+            self.c.x * (self.a.y - self.b.y)
         )
-    
+
+
 @dataclass
 class TriangleIndices:
     """
@@ -67,7 +73,7 @@ class TriangleIndices:
     b_index: int
     c_index: int
 
-    
+
 @dataclass
 class Mesh2D:
     vertices: list[Point2D]

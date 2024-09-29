@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from numpy import array, poly, unique
+from numpy import array, average, poly, unique
 import matplotlib.pyplot as plt
 
 from geometry.geometry import Point2D, Point3D, Polygon2D, TriangleIndices
 from geometry.geometry_utils import triangulate_polygon
-from utils import distinct
+from utils import average_of, distinct
 
 
 @dataclass
@@ -15,6 +15,12 @@ class AnnotatedMesh:
     alpha: float
     name: str
     group_name: str
+
+    def center(self) -> Point3D:
+        x = average_of(self.vertices, lambda v: v.x)
+        y = average_of(self.vertices, lambda v: v.y)
+        z = average_of(self.vertices, lambda v: v.z)
+        return Point3D(x, y, z)
 
 
 @dataclass

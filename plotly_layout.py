@@ -7,7 +7,7 @@ from shapely import Polygon, delaunay_triangles
 
 from geometry.geometry import Point2D
 from layout import Layout
-from polygon_to_mesh import AnnotatedMesh, ExtrudedPolygon, polygon_to_mesh
+from polygon_triangulizer import AnnotatedMesh, ExtrudedPolygon, polygon_to_mesh
 from utils import none_check
 
 
@@ -49,7 +49,7 @@ def plotly_plot_meshes(title: str, meshes: list[AnnotatedMesh], show_text: bool)
     data = []
     taken_group_names = set()
 
-    def to_plotly_mesh(mesh: AnnotatedMesh, showing_text: bool) -> go.Mesh3d:
+    def to_plotly_mesh(mesh: AnnotatedMesh) -> go.Mesh3d:
         # Extract x, y, z coordinates
         x = [vertex.x for vertex in mesh.vertices]
         y = [vertex.y for vertex in mesh.vertices]
@@ -81,7 +81,7 @@ def plotly_plot_meshes(title: str, meshes: list[AnnotatedMesh], show_text: bool)
         )
 
     for mesh in meshes:
-        data.append(to_plotly_mesh(mesh, showing_text=show_text))
+        data.append(to_plotly_mesh(mesh))
 
     if show_text:
         for mesh in meshes:
@@ -118,9 +118,9 @@ def plotly_plot_layout(layout: Layout, show_text: bool):
 
     for via in layout.vias:
         polygon = ExtrudedPolygon(
-            z_base=none_check(via.layer),
+            z_base=none_check(via.layer) if not via.mark else 0,
             z_top=none_check(via.layer) + 1,
-            color="black",
+            color="red" if via.mark else "black",
             vertices=via.rect.as_polygon(),
             alpha=0.3,
             name=via.name,

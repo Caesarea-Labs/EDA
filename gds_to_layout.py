@@ -7,10 +7,11 @@ from layout_inflation import inflate_layout
 from layout import Layout, Metal, Via
 from polygon_slicing import GdsPolygonBB, cut_polygons, get_contained_rectangles
 from plotly_layout import plotly_plot_layout
+from pyvista_layout import pyvista_plot_layout
 from signal_tracer import trace_signals
 from utils import max_of, measure_time, min_of
+from cache import cache_dir
 
-cache_dir = Path("cache")
 cell_name = "top_io"
 
 
@@ -155,8 +156,12 @@ def main():
                                  )
     with_layers = inflate_layout(layout)
     with_signal = trace_signals(with_layers)
-    plotly_plot_layout(with_signal, show_text=False)
+    pyvista_plot_layout(with_signal, show_text=False)
+
+    # plotly_plot_layout(with_signal, show_text=False)
 
 
 if __name__ == "__main__":
     main()
+
+# Next step: turning off layers selectively using github example with s

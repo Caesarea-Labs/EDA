@@ -1,30 +1,15 @@
 from dataclasses import dataclass
+from os import name
 from typing import Optional, Iterator
 
-from numpy import vecdot
 from shapely import Polygon, STRtree
 
 from geometry.geometry import Point2D, Polygon2D, Rect2D
-from utils import max_of, none_check
-
-
-
-
-
-# @dataclass
-# class Point2DFloat:
-#     x: float
-#     y: float
-
-#     def __iter__(self) -> Iterator[float]:
-#         return iter((self.x, self.y))
-
-
+from utils import max_of, min_of, none_check
 
 
 
 class LayoutPolygon:
-
     layer: Optional[int]
     """
         The physical z height of the polygon. 
@@ -35,13 +20,10 @@ class LayoutPolygon:
         The relatively arbitrary layer value given to the polygon by the GDS file.
         Polygons with the same gds_layer are the same height, but a higher gds_layer value does not necessarily mean that the polygon is physically higher. 
     """
-
-    # bottom_layer: int
-    # top_layer: int
     vertices: list[Point2D]
     """
         The order of vertices is very important, as it determines how the sides are connected. Sides are connected from each vertex to the next one.
-"""
+    """
     signal_index: Optional[int]
     name: str
 
@@ -65,6 +47,33 @@ class Metal(LayoutPolygon):
     gds_layer: Optional[int] = None
     layer: Optional[int] = None
 
+    def __repr__(self) -> str:
+        return f"{self.layer}:{represent_polygon(self.polygon)} #{self.signal_index} ({name})"
+    
+def represent_polygon(polygon: Polygon2D) -> str:
+    if len(polygon) == 4:
+        # quad
+        min_x = min_of(polygon, lambda p: p.x)
+        max_x = max_of(polygon, lambda p: p.x)
+        min_y = min_of(polygon, lambda p: p.y)
+        max_y = max_of(polygon, lambda p: p.y)
+
+        width = (max_x - min_x)
+        height = (max_y - min_y)
+
+        # Check if they are close instead of equal because of potential floating point imprecision
+        if abs(width - height) < 0.000001:
+            # Square
+            return f"Square[({min_x}, {min_y}), s={width}]"
+        else: 
+            # Other quad
+            return f"Quad[({min_x, min_y})->({max_x}, {max_y})]"
+    else:
+        return str([
+            (float(point.x), float(point.y)) for point in polygon
+        ])
+
+
 
 @dataclass
 class Via(LayoutPolygon):
@@ -79,6 +88,10 @@ class Via(LayoutPolygon):
     name: str = "Via"
     gds_layer: Optional[int] = None
     layer: Optional[int] = None
+    mark: bool = False
+    """
+    I true, will be specially marked when plotted out
+    """
 
     def __post_init__(self):
         self.vertices = self.rect.as_polygon()
@@ -117,6 +130,9 @@ class Layout:
             layers[none_check(metal.layer)].append(metal)
         
         return layers
+    
+    def with_added_vias(self, vias: list[Via])-> 'Layout':
+        return Layout(self.metals, self.vias + vias)
 
 
 MetalIndex = dict[int, STRtree]
