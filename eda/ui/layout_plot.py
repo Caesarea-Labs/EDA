@@ -7,7 +7,7 @@ from ..layout import Layout
 from ..polygon_triangulizer import AnnotatedMesh, ExtrudedPolygon, polygon_to_mesh
 import pyvista as pv
 
-from utils import none_check
+from ..utils import none_check
 
 fill_colors = ['cyan', 'lightgreen', 'lightblue', 'orange', 'yellow',
                'pink', 'lightcoral', 'lightgray', 'lavender', 'beige']
@@ -52,7 +52,7 @@ def plot_layout(layout: Layout, show_text: bool, plotter: pv.Plotter) -> LayoutP
         meshes.append(polygon_to_mesh(polygon))
 
     # Convert polygons to meshes
-    return plot_mesh(meshes, show_text, plotter)
+    return plot_meshes(meshes, show_text, plotter)
 
 
 @dataclass
@@ -67,28 +67,44 @@ class SetVisibilityCallback:
 
 
 
-def plot_mesh(meshes: list[AnnotatedMesh], show_text: bool, plotter: pv.Plotter) -> LayoutPlotBindings:
+def plot_meshes(meshes: list[AnnotatedMesh], show_text: bool, plotter: pv.Plotter) -> LayoutPlotBindings:
     # Plot the mesh
     # plotter = pv.Plotter()
 
     # First element of tuple is the color of the group, second element is meshes in the group.
-    meshes_by_group: MeshDict = {}
-
-    # for mesh in meshes:
-    #     if mesh.group_name in meshes:
-    #         meshes[mesh.group_name][1].append(polygon_actor)
-    #     else:
-    #         # Use the color of the first mesh as the group color
-    #         meshes[mesh.group_name] = (mesh.color, [polygon_actor])
+    meshes_by_group: dict[str, list[AnnotatedMesh]] = {}
 
     for mesh in meshes:
-        add_mesh_to_plotter(plotter, mesh, meshes_by_group, show_text)
+        if mesh.group_name in meshes_by_group:
+            meshes_by_group[mesh.group_name].append(mesh)
+        else:
+            # Use the color of the first mesh as the group color
+            meshes_by_group[mesh.group_name] =  [mesh]
 
+    for group_name, group_meshes in meshes_by_group.items():
+        multiblock = pv.MultiBlock()
+        color = group_meshes[0].color
+        opacity = group_meshes[0].alpha
+        for mesh in group_meshes:
+            # plotter.add_mesh(mesh_to_pyvista_polydata(mesh), show_edges=False, color=color, opacity=opacity)
+            multiblock.append(mesh_to_pyvista_polydata(mesh))
+            if show_text:
+                 # Normal = 1,0,0 to make it mostly face the camera
+                 # stfu Text3D is an acceptable input here
+                multiblock.append(pv.Text3D(mesh.name, center=mesh.center().to_tuple(), height=0.3, normal=(1, 0, 0))) # type: ignore
+
+        # Use the color and opacity of the first item in the group (Can consider making those not a per-mesh property)
+        
+        plotter.add_mesh(multiblock, show_edges=False, color=color, opacity=opacity, render = False)
+            
+
+    # for mesh in meshes:
+        # plotter.add_mesh(mesh_to_pyvista_polydata(mesh)
     plotter.show()
 
     # QtInteractor()
 
-    return LayoutPlotBindings(meshes_by_group)
+    return LayoutPlotBindings({})
 
     # for i, (group, (color, mesh_actors)) in enumerate(meshes_by_group.items()):
     #     checkbox_actor = plotter.add_checkbox_button_widget(SetVisibilityCallback(mesh_actors), value=True,
@@ -147,21 +163,21 @@ def plot_mesh(meshes: list[AnnotatedMesh], show_text: bool, plotter: pv.Plotter)
     # plotter.show()
 
 
-def add_mesh_to_plotter(plotter: pv.Plotter, mesh: AnnotatedMesh, meshes: MeshDict, draw_text: bool):
-    polygon_actor = cast(pv.Actor, plotter.add_mesh(mesh_to_pyvista_polydata(mesh), show_edges=False, color=mesh.color, opacity=mesh.alpha))
+# def add_mesh_to_multiblock(block: pv.Plotter, mesh: AnnotatedMesh, meshes: MeshDict, draw_text: bool):
+#     polygon_actor = cast(pv.Actor, plotter.add_mesh(mesh_to_pyvista_polydata(mesh), show_edges=False, color=mesh.color, opacity=mesh.alpha))
 
-    # Add meshes to mesh group so they can be toggled off
-    if mesh.group_name in meshes:
-        meshes[mesh.group_name][1].append(polygon_actor)
-    else:
-        # Use the color of the first mesh as the group color
-        meshes[mesh.group_name] = (mesh.color, [polygon_actor])
+#     # # Add meshes to mesh group so they can be toggled off
+#     # if mesh.group_name in meshes:
+#     #     meshes[mesh.group_name][1].append(polygon_actor)
+#     # else:
+#     #     # Use the color of the first mesh as the group color
+#     #     meshes[mesh.group_name] = (mesh.color, [polygon_actor])
 
-    if draw_text:
-        # Normal = 1,0,0 to make it mostly face the camera
-        text_actor = plotter.add_mesh(pv.Text3D(mesh.name, center=mesh.center().to_tuple(), height=0.3, normal=(1, 0, 0)))
-        # Make it so turning off the polygon will turn off the text too
-        meshes[mesh.group_name][1].append(text_actor)
+#     # if draw_text:
+#         # Normal = 1,0,0 to make it mostly face the camera
+#     plotter.add_mesh(pv.Text3D(mesh.name, center=mesh.center().to_tuple(), height=0.3, normal=(1, 0, 0)))
+#         # Make it so turning off the polygon will turn off the text too
+#         # meshes[mesh.group_name][1].append(text_actor)
 
 
 def mesh_to_pyvista_polydata(mesh: AnnotatedMesh) -> pv.PolyData:
@@ -185,38 +201,3 @@ def mesh_to_pyvista_polydata(mesh: AnnotatedMesh) -> pv.PolyData:
     polydata = pv.PolyData(points, triangles)
     return polydata
 
-
-if __name__ == "__main__":
-    polygon_1 = ExtrudedPolygon(
-        z_base=0, z_top=1,
-        vertices=[
-            Point2D(0, 0),  # Bottom-left corner
-            Point2D(2, 0),  # Bottom-right corner
-            Point2D(2, 1),  # Middle-right corner
-            Point2D(3, 1),  # Middle-right overhang
-            Point2D(3, 2),  # Top-right overhang
-            Point2D(1, 2),  # Top-left corner of overhang
-            Point2D(1, 1),  # Middle-left corner
-            Point2D(0, 1)   # Back to bottom-left corner
-        ],
-        color="blue", alpha=0.3, name="test1", group_name="1"
-    )
-
-    polygon_2 = ExtrudedPolygon(
-        z_base=10, z_top=11,
-        vertices=[
-            Point2D(0, 0),  # Bottom-left corner
-            Point2D(2, 0),  # Bottom-right corner
-            Point2D(2, 1),  # Middle-right corner
-            Point2D(3, 1),  # Middle-right overhang
-            Point2D(3, 2),  # Top-right overhang
-            Point2D(1, 2),  # Top-left corner of overhang
-            Point2D(1, 1),  # Middle-left corner
-            Point2D(0, 1)   # Back to bottom-left corner
-        ],
-        color="blue", alpha=0.3, name="test2", group_name="2"
-    )
-
-    pyvista_plot_meshes([
-        polygon_to_mesh(polygon_1), polygon_to_mesh(polygon_2)
-    ], show_text=True)

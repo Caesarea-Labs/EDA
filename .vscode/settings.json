@@ -4,7 +4,7 @@
         ".idea": true,
         ".venv": true
     },
-    "code-runner.executorMap": {
-    "python": "python -u",
-    }
+    "code-runner.runInTerminal": true,
+    "code-runner.customCommand": "python -m $fileNameWithoutExt",
+
 }

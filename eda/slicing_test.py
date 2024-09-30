@@ -1,5 +1,5 @@
-from polygon_slicing import get_contained_rectangles
-from gpu_slicing import GdsPolygonBB, filter_intersecting_rectangles_gpu
+from .polygon_slicing import GdsPolygonBB, get_contained_rectangles
+# from gpu_slicing import GdsPolygonBB, filter_intersecting_rectangles_gpu
 
 
 # Various methods for creating test rectangles to test intersections on

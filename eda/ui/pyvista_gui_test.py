@@ -1,19 +1,20 @@
 from dataclasses import dataclass
+import os
 import sys
-from PyQt6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QScrollArea
 )
-from PyQt6.QtCore import Qt, QSize
 import pyvista as pv
 from pyvistaqt import BackgroundPlotter, QtInteractor
 
-from .layout_plot import plot_layout
+from eda.ui.layout_plot import plot_layout
 
-from ..layout import Layout
-from ..test_layout import test_layout_const
+from eda.layout import Layout
+from eda.test_layout import test_layout_const
 
 
+# TODO: move to pyside6 because it's lgpl. 
 
 
 
@@ -66,7 +67,6 @@ class MainWindow(QMainWindow):
         # self.resizeEvent = self.on_resize
 
         plot_layout(self.c_layout, show_text=False, plotter=self.plotter)
-        sys.exit()
 
 
         # sphere = pv.Sphere()
