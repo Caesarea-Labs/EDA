@@ -4,12 +4,12 @@ from typing import cast
 
 from gdstk import Polygon
 from shapely import STRtree, box
-from cache import cached
-from gds_to_layout import parse_gds_layout
+from .cache import cached
+from .gds_to_layout import get_large_gds_layout_test, parse_gds_layout
 from genetic_utils import sample_random_point
-from geometry.geometry import Point2D, Polygon2D, Rect2D, create_polygon
-from geometry.geometry_utils import PolygonIndex, distance, max_distance_between_points
-from layout import Layout, Metal, Via, to_shapely_polygon
+from .geometry.geometry import Point2D, Polygon2D, Rect2D, create_polygon
+from .geometry.geometry_utils import PolygonIndex, distance, max_distance_between_points
+from .layout import Layout, Metal, Via, to_shapely_polygon
 import numpy as np
 import cv2
 from numpy.typing import NDArray
@@ -19,7 +19,6 @@ from geneticalgorithm2 import Generation
 from geneticalgorithm2.data_types.result import GAResult
 from geneticalgorithm2 import GeneticAlgorithm2
 
-from lior import geneticalgorithm
 import plotly_layout
 from utils import max_of, min_of, none_check
 
@@ -58,13 +57,7 @@ def Generate_Initial_Population(layout: Layout, population_size: int, target_sig
 if __name__ == "__main__":
     via_size = 0.2
     via_padding = 0.2
-    bounds: Polygon2D = create_polygon([(1200, 730), (1200, 775), (1390, 775), (1390, 762), (1210, 762), (1210, 730)])
-    layout = parse_gds_layout(
-        Path("test_gds_1.gds"),
-        bounds,
-        metal_layers={61, 62, 63, 64, 65, 66},
-        via_layers={70, 71, 72, 73, 74}
-    )
+    layout = get_large_gds_layout_test()
 
     signal_a = 0
     signal_b = 5

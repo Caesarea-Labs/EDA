@@ -1,18 +1,25 @@
 from dataclasses import dataclass
 from typing import Any, cast
 import numpy as np
-from geometry.geometry import Point2D
-from layout import Layout
-from polygon_triangulizer import AnnotatedMesh, ExtrudedPolygon, polygon_to_mesh
+from pyvistaqt import QtInteractor
+from ..geometry.geometry import Point2D
+from ..layout import Layout
+from ..polygon_triangulizer import AnnotatedMesh, ExtrudedPolygon, polygon_to_mesh
 import pyvista as pv
 
 from utils import none_check
 
 fill_colors = ['cyan', 'lightgreen', 'lightblue', 'orange', 'yellow',
                'pink', 'lightcoral', 'lightgray', 'lavender', 'beige']
+MeshDict = dict[str, tuple[str, list[pv.Actor]]]
+
+@dataclass
+class LayoutPlotBindings:
+    # plotter: pv.Plotter
+    mesh_groups: MeshDict
 
 
-def pyvista_plot_layout(layout: Layout, show_text: bool):
+def plot_layout(layout: Layout, show_text: bool, plotter: pv.Plotter) -> LayoutPlotBindings:
     """
     Will draw the layout in 3D.
     If show_text is true, every metal and via will have its named displayed. This should be turned off for large layouts. 
@@ -45,7 +52,7 @@ def pyvista_plot_layout(layout: Layout, show_text: bool):
         meshes.append(polygon_to_mesh(polygon))
 
     # Convert polygons to meshes
-    pyvista_plot_meshes(meshes, show_text)
+    return plot_mesh(meshes, show_text, plotter)
 
 
 @dataclass
@@ -57,31 +64,44 @@ class SetVisibilityCallback:
             actor.SetVisibility(visible)
 
 
-MeshDict = dict[str, tuple[str, list[pv.Actor]]]
 
 
-def pyvista_plot_meshes(meshes: list[AnnotatedMesh], show_text: bool):
+
+def plot_mesh(meshes: list[AnnotatedMesh], show_text: bool, plotter: pv.Plotter) -> LayoutPlotBindings:
     # Plot the mesh
-    plotter = pv.Plotter()
+    # plotter = pv.Plotter()
 
     # First element of tuple is the color of the group, second element is meshes in the group.
     meshes_by_group: MeshDict = {}
 
+    # for mesh in meshes:
+    #     if mesh.group_name in meshes:
+    #         meshes[mesh.group_name][1].append(polygon_actor)
+    #     else:
+    #         # Use the color of the first mesh as the group color
+    #         meshes[mesh.group_name] = (mesh.color, [polygon_actor])
+
     for mesh in meshes:
         add_mesh_to_plotter(plotter, mesh, meshes_by_group, show_text)
 
-    for i, (group, (color, mesh_actors)) in enumerate(meshes_by_group.items()):
-        checkbox_actor = plotter.add_checkbox_button_widget(SetVisibilityCallback(mesh_actors), value=True,
-                                           position=(5, 12 + i * 35), size=30,
-                                           border_size=1,
-                                           color_on=color,
-                                           color_off='grey',
-                                           background_color='grey')
-        checkbox_actor.
-        # checkbox_actor.GetPositionCoordinate().SetCoordinateSystemToNormalizedViewport()
+    plotter.show()
+
+    # QtInteractor()
+
+    return LayoutPlotBindings(meshes_by_group)
+
+    # for i, (group, (color, mesh_actors)) in enumerate(meshes_by_group.items()):
+    #     checkbox_actor = plotter.add_checkbox_button_widget(SetVisibilityCallback(mesh_actors), value=True,
+    #                                        position=(5, 12 + i * 35), size=30,
+    #                                        border_size=1,
+    #                                        color_on=color,
+    #                                        color_off='grey',
+    #                                        background_color='grey')
+    #     checkbox_actor.
+    #     # checkbox_actor.GetPositionCoordinate().SetCoordinateSystemToNormalizedViewport()
         
 
-        text_actor = plotter.add_text(group, position=(1,1), viewport=True)  # type: ignore
+    #     text_actor = plotter.add_text(group, position=(1,1), viewport=True)  # type: ignore
 
         # def update_text_position(caller: Any = None, event: Any = None):
         #     window_size = plotter.window_size  # Get the current window size
@@ -123,8 +143,8 @@ def pyvista_plot_meshes(meshes: list[AnnotatedMesh], show_text: bool):
     # text_actor.AddPosition(-5, -5)  # Offset by -5 pixels in x and y
 
     # Create the figure and show it
-    cast(pv.Camera, plotter.camera).SetViewUp(0,-1,0)
-    plotter.show()
+    # cast(pv.Camera, plotter.camera).SetViewUp(0,-1,0)
+    # plotter.show()
 
 
 def add_mesh_to_plotter(plotter: pv.Plotter, mesh: AnnotatedMesh, meshes: MeshDict, draw_text: bool):

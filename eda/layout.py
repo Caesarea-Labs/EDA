@@ -4,8 +4,8 @@ from typing import Optional, Iterator
 
 from shapely import Polygon, STRtree
 
-from geometry.geometry import Point2D, Polygon2D, Rect2D
-from utils import max_of, min_of, none_check
+from .geometry.geometry import Point2D, Polygon2D, Rect2D
+from .utils import max_of, min_of, none_check
 
 
 

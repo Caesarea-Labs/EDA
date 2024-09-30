@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from numpy import array, average, poly, unique
 import matplotlib.pyplot as plt
 
-from geometry.geometry import Point2D, Point3D, Polygon2D, TriangleIndices
-from geometry.geometry_utils import triangulate_polygon
-from utils import average_of, distinct
+from .geometry.geometry import Point2D, Point3D, Polygon2D, TriangleIndices
+from .geometry.geometry_utils import triangulate_polygon
+from .utils import average_of, distinct
 
 
 @dataclass

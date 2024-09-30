@@ -1,0 +1,6 @@
+[project]
+name = "eda"
+version = "0.1.0"
+description = "My small project"
+[project.scripts]
+eda = "eda.__main__"

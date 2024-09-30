@@ -5,10 +5,10 @@ import numpy as np
 from pyparsing import col
 from shapely import Polygon, delaunay_triangles
 
-from geometry.geometry import Point2D
-from layout import Layout
-from polygon_triangulizer import AnnotatedMesh, ExtrudedPolygon, polygon_to_mesh
-from utils import none_check
+from .geometry.geometry import Point2D
+from .layout import Layout
+from .polygon_triangulizer import AnnotatedMesh, ExtrudedPolygon, polygon_to_mesh
+from .utils import none_check
 
 
 def mesh_text(mesh: AnnotatedMesh) -> go.Scatter3d:

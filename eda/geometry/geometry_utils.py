@@ -4,8 +4,8 @@ import numpy as np
 from shapely import Polygon as ShapelyPolygon, STRtree
 import shapely
 from shapely.geometry.base import BaseGeometry
-from geometry.geometry import Mesh2D, Point2D, Polygon2D, TriangleIndices
-from utils import distinct
+from ..utils import distinct
+from .geometry import Mesh2D, Point2D, Polygon2D, TriangleIndices
 import triangle
 from scipy.spatial import ConvexHull
 

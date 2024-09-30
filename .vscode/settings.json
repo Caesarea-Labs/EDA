@@ -3,5 +3,8 @@
         "__pycache__": true,
         ".idea": true,
         ".venv": true
+    },
+    "code-runner.executorMap": {
+    "python": "python -u",
     }
 }

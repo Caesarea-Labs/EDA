@@ -1,4 +1,4 @@
-from layout import Via,Rect2D, Layout
+from ui.model.layout import Via,Rect2D, Layout
 from Shapes import s_shape, lamed_shape, L_shape, rect_shape
 from plotly_layout import plotly_plot_layout
 

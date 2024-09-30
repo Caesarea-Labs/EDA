@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Iterator
 
-from pyvista import Triangle
 
 
 @dataclass(frozen=True, eq=True)

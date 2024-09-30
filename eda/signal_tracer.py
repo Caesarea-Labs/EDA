@@ -4,10 +4,10 @@ from typing import Iterable, Tuple, cast
 from networkx import Graph, connected_components
 from shapely import Polygon, STRtree
 
-from layout import Layout, Metal, Point2D, Via
-from plotly_layout import plotly_plot_layout
-from test_layout import test_layout_const
-from utils import max_of, none_check
+from .layout import Layout, Metal, Point2D, Via
+from .plotly_layout import plotly_plot_layout
+from .test_layout import test_layout_const
+from .utils import max_of, none_check
 
 
 def trace_signals(layout: Layout) -> Layout:

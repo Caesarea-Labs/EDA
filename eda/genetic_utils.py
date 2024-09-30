@@ -1,7 +1,7 @@
 
 import random
-from geometry.geometry import Point2D, Polygon2D, Triangle2D
-from geometry.geometry_utils import triangulate_polygon
+from .geometry.geometry import Point2D, Polygon2D, Triangle2D
+from .geometry.geometry_utils import triangulate_polygon
 
 
 def sample_random_point(polygon: Polygon2D) -> Point2D:

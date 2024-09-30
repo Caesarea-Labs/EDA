@@ -1,8 +1,8 @@
 from gdstk import Polygon
 import gdstk
 import shapely
-from geometry.geometry import Polygon2D
-from utils import max_of, measure_time, min_of
+from .geometry.geometry import Polygon2D
+from .utils import max_of, measure_time, min_of
 
 GdsPolygonBB = tuple[tuple[float, float], tuple[float, float]]
 

@@ -1,16 +1,19 @@
+import cProfile
 from pathlib import Path
 from gdstk import Cell, Library, Polygon, Reference, read_gds
 from typing import Tuple, cast
 
-from geometry.geometry import Point2D, Polygon2D, Rect2D, create_polygon
-from layout_inflation import inflate_layout
-from layout import Layout, Metal, Via
-from polygon_slicing import GdsPolygonBB, cut_polygons, get_contained_rectangles
-from plotly_layout import plotly_plot_layout
-from pyvista_layout import pyvista_plot_layout
-from signal_tracer import trace_signals
-from utils import max_of, measure_time, min_of
-from cache import cache_dir
+from pyvista import Plotter
+
+from .geometry.geometry import Point2D, Polygon2D, Rect2D, create_polygon
+from .layout_inflation import inflate_layout
+from .layout import Layout, Metal, Via
+from .polygon_slicing import GdsPolygonBB, cut_polygons, get_contained_rectangles
+from .signal_tracer import trace_signals
+from .ui.layout_plot import plot_layout
+from .ui.pyvista_gui_test import plot_layout_with_qt_gui
+from .utils import max_of, measure_time, min_of
+from .cache import cache_dir
 
 cell_name = "top_io"
 
@@ -146,17 +149,30 @@ def parse_gds_layout(gds_file: Path, bounding_box: Polygon2D, metal_layers: set[
     with_layers = inflate_layout(layout)
     return trace_signals(with_layers)
 
+def get_large_gds_layout_test() -> Layout:
+    bounds: Polygon2D = create_polygon([(1200, 730), (1200, 775), (1390, 775), (1390, 762), (1210, 762), (1210, 730)])
+    return parse_gds_layout(
+        Path("test_gds_1.gds"),
+        bounds,
+        metal_layers={61, 62, 63, 64, 65, 66},
+        via_layers={70, 71, 72, 73, 74}
+    )
+
 
 @measure_time
 def main():
-    layout = slice_gds_to_layout(Path("test_gds_1.gds"),
-                                 create_polygon([(1200, 730), (1200, 775), (1390, 775), (1390, 762), (1210, 762), (1210, 730)]),
-                                 metal_layers={61, 62, 63, 64, 65, 66},
-                                 via_layers={70, 71, 72, 73, 74}
-                                 )
-    with_layers = inflate_layout(layout)
-    with_signal = trace_signals(with_layers)
-    pyvista_plot_layout(with_signal, show_text=False)
+    # layout = slice_gds_to_layout(Path("test_gds_1.gds"),
+    #                              create_polygon([(1200, 730), (1200, 775), (1390, 775), (1390, 762), (1210, 762), (1210, 730)]),
+    #                              metal_layers={61, 62, 63, 64, 65, 66},
+    #                              via_layers={70, 71, 72, 73, 74}
+    #                              )
+    # with_layers = inflate_layout(layout)
+    # with_signal = trace_signals(with_layers)
+
+    cProfile.run("plot_layout_with_qt_gui(get_large_gds_layout_test())")
+    
+    # plotter = Plotter()
+    # plot_layout(get_large_gds_layout_test(), show_text=False, plotter=plotter)
 
     # plotly_plot_layout(with_signal, show_text=False)
 

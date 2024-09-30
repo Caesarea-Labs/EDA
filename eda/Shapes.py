@@ -3,7 +3,7 @@ from typing import Tuple
 
 from typing_extensions import Optional
 
-from layout import Point2D, Metal
+from .layout import Point2D, Metal
 
 
 @dataclass

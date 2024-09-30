@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import sys
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -5,11 +6,24 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QSize
 import pyvista as pv
-from pyvistaqt import QtInteractor
+from pyvistaqt import BackgroundPlotter, QtInteractor
+
+from .layout_plot import plot_layout
+
+from ..layout import Layout
+from ..test_layout import test_layout_const
+
+
+
+
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    c_layout: Layout
+
+    def __init__(self, layout: Layout):
         super().__init__()
+        self.c_layout = layout
+        # plot_layout_with_gui()
 
         # Add a mesh to the plotter
         self.plotter = QtInteractor(self)
@@ -17,7 +31,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.plotter)
 
         # Create the scrollable area
-        scroll = scroll_area = QScrollArea(self)
+        scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
         scroll.setFixedWidth(200)  # Adjust width as needed
         scroll.setFixedHeight(400)  # Adjust height as needed
@@ -51,18 +65,36 @@ class MainWindow(QMainWindow):
         # Update the position of the scroll area when the window is resized
         # self.resizeEvent = self.on_resize
 
+        plot_layout(self.c_layout, show_text=False, plotter=self.plotter)
+        sys.exit()
 
-        mesh = pv.Sphere()
-        self.plotter.add_mesh(mesh)
-        self.plotter.show()
+
+        # sphere = pv.Sphere()
+
+        # plotter = BackgroundPlotter()
+        # plotter.add_mesh(sphere)
+
+        # mesh = pv.Sphere()
+        # self.plotter.add_mesh(mesh)
+        # self.plotter.show()
 
     # def on_resize(self, event):
     #     """Reposition scroll area on window resize."""
     #     self.scroll_area.move(self.width() - self.scroll_area.width(), 0)
     #     event.accept()
 
-if __name__ == "__main__":
+
+
+def plot_layout_with_qt_gui(layout: Layout):
     app = QApplication(sys.argv)
-    window = MainWindow()
+    window = MainWindow(layout)
     window.show()
     sys.exit(app.exec())
+
+if __name__ == "__main__":
+    plot_layout_with_qt_gui(test_layout_const)
+    # plot_layout_with_gui(get_large_gds_layout_test())
+    # app = QApplication(sys.argv)
+    # window = MainWindow()
+    # window.show()
+    # sys.exit(app.exec())
