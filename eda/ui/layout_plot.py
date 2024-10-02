@@ -6,6 +6,7 @@ from ..geometry.geometry import Point2D
 from ..layout import Layout
 from ..polygon_triangulizer import AnnotatedMesh, ExtrudedPolygon, polygon_to_mesh
 import pyvista as pv
+import vtk
 
 from ..utils import none_check
 
@@ -21,7 +22,12 @@ class LayoutPlotBindings:
     mesh_groups: MeshDict
 
 
-def plot_layout(layout: Layout, show_text: bool, plotter: pv.BasePlotter) -> LayoutPlotBindings:
+# TODO: add button to show all signals
+
+
+
+def plot_layout(layout: Layout, show_text: bool, plotter: pv.Plotter) -> LayoutPlotBindings:
+    
     """
     Will draw the layout in 3D.
     If show_text is true, every metal and via will have its named displayed. This should be turned off for large layouts. 
