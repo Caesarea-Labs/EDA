@@ -1,6 +1,6 @@
 from .layout import Layout, Via, Rect2D
 from .Shapes import L_shape, lamed_shape, rect_shape
-from .plotly_layout import plotly_plot_layout
+# from .plotly_layout import plotly_plot_layout
 
 shape = lamed_shape(1.1, 3, 2, 2)
 test_layout_const = Layout(metals=[
@@ -106,10 +106,10 @@ test_layout_const = Layout(metals=[
 )
 
 if __name__ == "__main__":
-
+    pass
     # TODO:
     # 1. Allow not specifying signals, and have it resolve the signals itself
     # 2. Have it attempt to connect 2 signals ('via edit')
     # 3. convert large GDS to our format for large input testing
 
-    plotly_plot_layout(test_layout_const, show_text=False)
+    # plotly_plot_layout(test_layout_const, show_text=False)

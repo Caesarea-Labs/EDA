@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 import numpy as np
 from pyvistaqt import QtInteractor
 from ..geometry.geometry import Point2D
@@ -11,7 +11,9 @@ from ..utils import none_check
 
 fill_colors = ['cyan', 'lightgreen', 'lightblue', 'orange', 'yellow',
                'pink', 'lightcoral', 'lightgray', 'lavender', 'beige']
-MeshDict = dict[str, tuple[str, list[pv.Actor]]]
+MeshGroup = TypedDict("MeshGroup", color=str, actor=pv.Actor)
+MeshDict = dict[str, MeshGroup]
+
 
 @dataclass
 class LayoutPlotBindings:
@@ -19,12 +21,24 @@ class LayoutPlotBindings:
     mesh_groups: MeshDict
 
 
-def plot_layout(layout: Layout, show_text: bool, plotter: pv.Plotter) -> LayoutPlotBindings:
+def plot_layout(layout: Layout, show_text: bool, plotter: pv.BasePlotter) -> LayoutPlotBindings:
     """
     Will draw the layout in 3D.
     If show_text is true, every metal and via will have its named displayed. This should be turned off for large layouts. 
     """
     meshes = []
+
+    for via in layout.vias:
+        polygon = ExtrudedPolygon(
+            z_base=none_check(via.layer) if not via.mark else 0,
+            z_top=none_check(via.layer) + 1,
+            color="red" if via.mark else "black",
+            vertices=via.rect.as_polygon(),
+            alpha=0.3,
+            name=via.name,
+            group_name="edit" if via.mark else "vias"
+        )
+        meshes.append(polygon_to_mesh(polygon))
 
     for metal in layout.metals:
         polygon = ExtrudedPolygon(
@@ -39,35 +53,22 @@ def plot_layout(layout: Layout, show_text: bool, plotter: pv.Plotter) -> LayoutP
         )
         meshes.append(polygon_to_mesh(polygon))
 
-    for via in layout.vias:
-        polygon = ExtrudedPolygon(
-            z_base=none_check(via.layer) if not via.mark else 0,
-            z_top=none_check(via.layer) + 1,
-            color="red" if via.mark else "black",
-            vertices=via.rect.as_polygon(),
-            alpha=0.3,
-            name=via.name,
-            group_name="vias"
-        )
-        meshes.append(polygon_to_mesh(polygon))
+    
 
     # Convert polygons to meshes
     return plot_meshes(meshes, show_text, plotter)
 
 
-@dataclass
-class SetVisibilityCallback:
-    actors: list[pv.Actor]
+# @dataclass
+# class SetVisibilityCallback:
+#     actors: list[pv.Actor]
 
-    def __call__(self, visible: bool):
-        for actor in self.actors:
-            actor.SetVisibility(visible)
-
-
+#     def __call__(self, visible: bool):
+#         for actor in self.actors:
+#             actor.SetVisibility(visible)
 
 
-
-def plot_meshes(meshes: list[AnnotatedMesh], show_text: bool, plotter: pv.Plotter) -> LayoutPlotBindings:
+def plot_meshes(meshes: list[AnnotatedMesh], show_text: bool, plotter: pv.BasePlotter) -> LayoutPlotBindings:
     # Plot the mesh
     # plotter = pv.Plotter()
 
@@ -79,9 +80,12 @@ def plot_meshes(meshes: list[AnnotatedMesh], show_text: bool, plotter: pv.Plotte
             meshes_by_group[mesh.group_name].append(mesh)
         else:
             # Use the color of the first mesh as the group color
-            meshes_by_group[mesh.group_name] =  [mesh]
+            meshes_by_group[mesh.group_name] = [mesh]
+
+    group_bindings: MeshDict = {}
 
     for group_name, group_meshes in meshes_by_group.items():
+        # Group the meshes in multiblocks for performance reasons
         multiblock = pv.MultiBlock()
         color = group_meshes[0].color
         opacity = group_meshes[0].alpha
@@ -89,22 +93,23 @@ def plot_meshes(meshes: list[AnnotatedMesh], show_text: bool, plotter: pv.Plotte
             # plotter.add_mesh(mesh_to_pyvista_polydata(mesh), show_edges=False, color=color, opacity=opacity)
             multiblock.append(mesh_to_pyvista_polydata(mesh))
             if show_text:
-                 # Normal = 1,0,0 to make it mostly face the camera
-                 # stfu Text3D is an acceptable input here
-                multiblock.append(pv.Text3D(mesh.name, center=mesh.center().to_tuple(), height=0.3, normal=(1, 0, 0))) # type: ignore
+                # Normal = 1,0,0 to make it mostly face the camera
+                # stfu Text3D is an acceptable input here
+                multiblock.append(pv.Text3D(mesh.name, center=mesh.center().to_tuple(), height=0.3, normal=(1, 0, 0)))  # type: ignore
 
         # Use the color and opacity of the first item in the group (Can consider making those not a per-mesh property)
-        
-        plotter.add_mesh(multiblock, show_edges=False, color=color, opacity=opacity, render = False)
-            
+        # render=false can improve performance significantly when drawing with QT
+        binding: pv.Actor = plotter.add_mesh(multiblock, show_edges=False, color=color, opacity=opacity, render=False)
+        # Store a reference to an actor that may hide/show the multiblock
+        group_bindings[group_name] = {'actor': binding, 'color': color}
 
     # for mesh in meshes:
-        # plotter.add_mesh(mesh_to_pyvista_polydata(mesh)
-    plotter.show()
+    # plotter.add_mesh(mesh_to_pyvista_polydata(mesh)
+    # plotter.show()
 
     # QtInteractor()
 
-    return LayoutPlotBindings({})
+    return LayoutPlotBindings(group_bindings)
 
     # for i, (group, (color, mesh_actors)) in enumerate(meshes_by_group.items()):
     #     checkbox_actor = plotter.add_checkbox_button_widget(SetVisibilityCallback(mesh_actors), value=True,
@@ -115,27 +120,26 @@ def plot_meshes(meshes: list[AnnotatedMesh], show_text: bool, plotter: pv.Plotte
     #                                        background_color='grey')
     #     checkbox_actor.
     #     # checkbox_actor.GetPositionCoordinate().SetCoordinateSystemToNormalizedViewport()
-        
 
     #     text_actor = plotter.add_text(group, position=(1,1), viewport=True)  # type: ignore
 
-        # def update_text_position(caller: Any = None, event: Any = None):
-        #     window_size = plotter.window_size  # Get the current window size
-        #     size = [0, 0]
-        #     text_actor.GetSize(plotter.renderer, size)  # Get the size of the text
-        #     # Set the text position to be 5 pixels left and down from the top-right corner
-        #     text_actor.SetDisplayPosition(
-        #         round(window_size[0] - size[0] - 5),  # X position
-        #         round(window_size[1] - size[1] - 5 - i * 35)   # Y position
-        #     )
-        # text_prop = text_actor.GetTextProperty()
-        # text_prop.SetJustificationToRight()
-        # text_prop.SetVerticalJustificationToTop()
+    # def update_text_position(caller: Any = None, event: Any = None):
+    #     window_size = plotter.window_size  # Get the current window size
+    #     size = [0, 0]
+    #     text_actor.GetSize(plotter.renderer, size)  # Get the size of the text
+    #     # Set the text position to be 5 pixels left and down from the top-right corner
+    #     text_actor.SetDisplayPosition(
+    #         round(window_size[0] - size[0] - 5),  # X position
+    #         round(window_size[1] - size[1] - 5 - i * 35)   # Y position
+    #     )
+    # text_prop = text_actor.GetTextProperty()
+    # text_prop.SetJustificationToRight()
+    # text_prop.SetVerticalJustificationToTop()
 
-        # text_actor.SetPosition2(0, 0)  # Reset any scaling
-        # text_actor.SetPosition(-40.0, -12 - i * 35)
+    # text_actor.SetPosition2(0, 0)  # Reset any scaling
+    # text_actor.SetPosition(-40.0, -12 - i * 35)
 
-        # plotter.iren.add_observer('RenderEvent', update_text_position)
+    # plotter.iren.add_observer('RenderEvent', update_text_position)
 
     # The text you want to display
     # text = 'Your Text Here'
@@ -200,4 +204,3 @@ def mesh_to_pyvista_polydata(mesh: AnnotatedMesh) -> pv.PolyData:
     # Create PolyData object
     polydata = pv.PolyData(points, triangles)
     return polydata
-

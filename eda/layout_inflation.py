@@ -4,7 +4,7 @@ from typing import Tuple
 from shapely import STRtree, Polygon
 
 from .layout import Layout, Metal, MetalIndex, Via, index_metals_by_gds_layer, to_shapely_polygon
-from .plotly_layout import plotly_plot_layout
+# from .plotly_layout import plotly_plot_layout
 from .test_layout import test_layout_const
 from .utils import none_check
 
@@ -174,4 +174,4 @@ def index_vias_by_gds_layer(layout: Layout) -> ViaIndex:
 
 if __name__ == "__main__":
     inflated = inflate_layout(scrambled_test_layout())
-    plotly_plot_layout(inflated, show_text=True)
+    # plotly_plot_layout(inflated, show_text=True)

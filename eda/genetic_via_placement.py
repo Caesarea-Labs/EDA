@@ -4,9 +4,11 @@ from typing import cast
 
 from gdstk import Polygon
 from shapely import STRtree, box
+
+from eda.ui.pyvista_gui import plot_layout_with_qt_gui
 from .cache import cached
 from .gds_to_layout import get_large_gds_layout_test, parse_gds_layout
-from genetic_utils import sample_random_point
+from .genetic_utils import sample_random_point
 from .geometry.geometry import Point2D, Polygon2D, Rect2D, create_polygon
 from .geometry.geometry_utils import PolygonIndex, distance, max_distance_between_points
 from .layout import Layout, Metal, Via, to_shapely_polygon
@@ -19,8 +21,7 @@ from geneticalgorithm2 import Generation
 from geneticalgorithm2.data_types.result import GAResult
 from geneticalgorithm2 import GeneticAlgorithm2
 
-import plotly_layout
-from utils import max_of, min_of, none_check
+from .utils import max_of, min_of, none_check
 
 resolution = 100
 
@@ -50,11 +51,7 @@ def Generate_Initial_Population(layout: Layout, population_size: int, target_sig
 
 
 
-
-
-
-
-if __name__ == "__main__":
+def get_test_ga_circuit_edit() -> Layout:
     via_size = 0.2
     via_padding = 0.2
     layout = get_large_gds_layout_test()
@@ -79,7 +76,6 @@ if __name__ == "__main__":
         # Construct a via to see what it would intersect with if this spot would have been chosen
         potential_via = box(x - via_size / 2, y - via_size / 2, x + via_size / 2, y + via_size / 2)
         # Only metals above this via pose a problem
-        all_intersects = [metal for metal in all_metals.get_intersecting(potential_via)]
         obstructing_metals = [metal for metal in all_metals.get_intersecting(potential_via) if none_check(metal.layer) > layer]
         cost = len(obstructing_metals)
 
@@ -218,12 +214,20 @@ if __name__ == "__main__":
     best_score = cost_func(np.array(result))
 
     new_layout = layout.with_added_vias([via_1, via_2])
-    plotly_layout.plotly_plot_layout(new_layout, show_text=False)
+    return new_layout
+    # plot_layout_with_qt_gui(new_layout)
 
-    if optional_model is not None:
-        cast(GeneticAlgorithm2, optional_model).plot_results()
+    # if optional_model is not None:
+    #     cast(GeneticAlgorithm2, optional_model).plot_results()
     
 
+
+
+
+
+
+# if __name__ == "__main__":
+    
 
 
 

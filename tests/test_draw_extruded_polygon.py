@@ -3,7 +3,7 @@ from eda import test_layout
 from eda.ui.layout_plot import plot_meshes
 from eda.geometry.geometry import Point2D
 from eda.polygon_triangulizer import ExtrudedPolygon, polygon_to_mesh
-from eda.ui.pyvista_gui_test import plot_layout_with_qt_gui
+from eda.ui.pyvista_gui import plot_layout_with_qt_gui
 
 
 def test_draw_extruded_polygon():
