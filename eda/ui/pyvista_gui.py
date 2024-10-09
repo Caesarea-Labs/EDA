@@ -146,9 +146,9 @@ def signal_checkbox(plotter: pv.Plotter, group: MeshGroup) -> QtWidgets.QCheckBo
 
     def on_checkbox_state_changed(state: int, actor: pv.Actor = group['actor']):
         if state == 0:
-            plotter.remove_actor(actor)
+            plotter.remove_actor(actor, render = False) # type: ignore
         else:
-            plotter.add_actor(actor)
+            plotter.add_actor(actor, render = False) # type: ignore
 
     checkbox.stateChanged.connect(on_checkbox_state_changed)
     checkbox.setCursor(Qt.CursorShape.PointingHandCursor)

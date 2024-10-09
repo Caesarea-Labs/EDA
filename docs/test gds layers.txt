@@ -1,0 +1,5 @@
+Diffusions - Layers 40 and 43
+Gate - Layer 14
+Gate Metals - 10 and 30
+Gate Via - Layer 50
+

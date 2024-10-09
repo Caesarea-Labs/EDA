@@ -13,7 +13,7 @@ cache_dir = Path("cache")
 R = TypeVar('R')
 P = ParamSpec('P')
 
-def cached(key: Optional[str] = None) -> Callable[[Callable[P, R]], Callable[P, R]]:
+def cached(key: Optional[str] = None, enabled: bool = True) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
     Decorator to cache the result of a function. If `key` is not provided,
     the function's name is used as the key.
@@ -31,12 +31,15 @@ def cached(key: Optional[str] = None) -> Callable[[Callable[P, R]], Callable[P, 
 
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            if os.path.exists(cache_file):
+            if enabled and os.path.exists(cache_file):
                 with open(cache_file, 'rb') as f:
                     print(f"Using cached value for {call_name}")
                     result = pickle.load(f)
             else:
-                print(f"Executing {call_name} for the first time...")
+                if enabled:
+                    print(f"Executing {call_name} for the first time...")
+                else:
+                    print(f"Executing {call_name} because caching is not enabled (it will still be cached for later)")
                 start_time = time.time()
                 result = func(*args, **kwargs)
                 end_time = time.time()

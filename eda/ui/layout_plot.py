@@ -18,12 +18,14 @@ MeshDict = dict[str, MeshGroup]
 
 @dataclass
 class LayoutPlotBindings:
-    # plotter: pv.Plotter
     mesh_groups: MeshDict
 
 
 # TODO: add button to show all signals
-
+def plot_layout_standalone(layout: Layout, show_text: bool = False):
+    plotter = pv.Plotter()
+    plot_layout(layout, show_text, plotter)
+    plotter.show()
 
 
 def plot_layout(layout: Layout, show_text: bool, plotter: pv.Plotter) -> LayoutPlotBindings:

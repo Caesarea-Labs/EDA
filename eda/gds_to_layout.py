@@ -1,5 +1,6 @@
 import cProfile
 from pathlib import Path
+from turtle import st
 from gdstk import Cell, Library, Polygon, Reference, read_gds
 from typing import Tuple, cast
 
@@ -16,8 +17,6 @@ from .utils import max_of, measure_time, min_of
 from .cache import cache_dir
 
 cell_name = "top_io"
-
-
 
 
 def get_gds_top_level_polygons(path: Path) -> list[Polygon]:
@@ -40,17 +39,20 @@ def cache_polygons(polygons: list[Polygon], path: Path):
     new_gds.write_gds(path)
 
 
-def get_filtered_polygons(gds_path: Path, bounding_box: Polygon2D, metal_layers: set[int], via_layers: set[int]) -> list[Polygon]:
+def get_filtered_polygons(gds_path: Path, bounding_box: Polygon2D, metal_layers: set[int], via_layers: set[int], cache_key: str) -> list[Polygon]:
     # We cache the filtered polygons in the cache dir
-    filtered_gds_cache = cache_dir.joinpath("filtered.gds")
-    if cache_dir.exists():
+    filtered_gds_cache = cache_dir.joinpath(f"filtered_{cache_key}.gds")
+    if filtered_gds_cache.exists():
         return get_gds_top_level_polygons(filtered_gds_cache)
 
     # We measure the time it takes for the expensive functions
 
     @measure_time
     def read_gds_timed() -> Library:
-        return read_gds(gds_path, filter={(layer, 0) for layer in (list(metal_layers) + list(via_layers))})
+        try:
+            return read_gds(gds_path, filter={(layer, 0) for layer in (list(metal_layers) + list(via_layers))})
+        except:
+            raise Exception(f"Could not read GDS file at {gds_path.absolute()}")
 
     # Assume data type is 0 always for now
     gds = read_gds_timed()
@@ -81,7 +83,7 @@ def get_filtered_polygons(gds_path: Path, bounding_box: Polygon2D, metal_layers:
     return contained_polygons
 
 
-def slice_gds_to_layout(gds_file: Path, bounding_box: Polygon2D, metal_layers: set[int], via_layers: set[int]) -> Layout:
+def slice_gds_to_layout(gds_file: Path, bounding_box: Polygon2D, metal_layers: set[int], via_layers: set[int], cache_key: str) -> Layout:
     """
     Converts the bounding_box part of a gds file at gds_file to a Caesarea Layout.
 
@@ -92,7 +94,7 @@ def slice_gds_to_layout(gds_file: Path, bounding_box: Polygon2D, metal_layers: s
     :param via_layers the layers of the gds file containing the vias - the connectors between metals. 
     """
 
-    relevant_polygons = get_filtered_polygons(gds_file, bounding_box, metal_layers, via_layers)
+    relevant_polygons = get_filtered_polygons(gds_file, bounding_box, metal_layers, via_layers, cache_key)
     sliced = cut_polygons(relevant_polygons, bounding_box)
     # aligned = align_polygons_to_origin(sliced)
 
@@ -140,23 +142,52 @@ def gds_polygon_to_via(polygon: Polygon) -> Via:
     )
 
 
-def parse_gds_layout(gds_file: Path, bounding_box: Polygon2D, metal_layers: set[int], via_layers: set[int]) -> Layout:
+def parse_gds_layout(gds_file: Path, bounding_box: Polygon2D, metal_layers: set[int], via_layers: set[int], cache_key: str) -> Layout:
     layout = slice_gds_to_layout(gds_file,
                                  bounding_box,
                                  metal_layers=metal_layers,
-                                 via_layers=via_layers
+                                 via_layers=via_layers,
+                                 cache_key=cache_key
                                  )
     with_layers = inflate_layout(layout)
     return trace_signals(with_layers)
 
-def get_large_gds_layout_test() -> Layout:
+
+def get_device_gds_layout_test() -> Layout:
+    bounds: Polygon2D = create_polygon([(1190, 730), (1190, 790), (1390, 790), (1390, 762), (1210, 762), (1210, 730)])
+    return parse_gds_layout(
+        Path("gds/test_gds_1.gds"),
+        bounds,
+        metal_layers={
+            10, 30,
+            61, 62, 63, 64, 65, 66
+        },
+        via_layers={
+            50,
+            70, 71, 72, 73, 74
+        },
+        cache_key="device_test"
+    )
+
+
+def get_corner_gds_layout_test() -> Layout:
     bounds: Polygon2D = create_polygon([(1200, 730), (1200, 775), (1390, 775), (1390, 762), (1210, 762), (1210, 730)])
     return parse_gds_layout(
-        Path("test_gds_1.gds"),
+        Path("gds/test_gds_1.gds"),
         bounds,
         metal_layers={61, 62, 63, 64, 65, 66},
-        via_layers={70, 71, 72, 73, 74}
+        via_layers={70, 71, 72, 73, 74},
+        cache_key="corner_test"
     )
+
+
+# def get_oleg_gds_layout() -> Layout:
+#     bounds = create_polygon([(21, 47), (40, 47), (40, 42), (21, 42)])
+#     return parse_gds_layout(
+#         Path("gds/oleg_gds.gds"),
+#         bounds,
+#         metal_layers={}
+#     )
 
 
 @measure_time
@@ -170,7 +201,7 @@ def main():
     # with_signal = trace_signals(with_layers)
 
     cProfile.run("plot_layout_with_qt_gui(get_large_gds_layout_test())")
-    
+
     # plotter = Plotter()
     # plot_layout(get_large_gds_layout_test(), show_text=False, plotter=plotter)
 

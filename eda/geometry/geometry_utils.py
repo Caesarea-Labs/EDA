@@ -1,7 +1,7 @@
 from itertools import combinations
 from typing import Callable, Generic, TypeVar, cast
 import numpy as np
-from shapely import Polygon as ShapelyPolygon, STRtree
+from shapely import Geometry, Polygon as ShapelyPolygon, STRtree, prepare
 import shapely
 from shapely.geometry.base import BaseGeometry
 from ..utils import distinct
@@ -66,18 +66,42 @@ class PolygonIndex(Generic[T]):
 
         return [self.items[i] for i in indices]
 
+    # def get_intersection(self, polygon: ShapelyPolygon) -> BaseGeometry:
+    #     """
+    #     Returns the portion of the passed polygon that intersects with any of the index's polygon.
+    #     """
+
+    #     # This step is very important as it vastly reduces the amount of intersection checks we need to do, essentially making this operation O(1) instead of O(n)
+    #     candidates = self.tree.query(polygon)
+    #     # Query does not guaranetee they all intersect, but it does significantly reduce the amount of checks we need to do.
+    #     indices = [index for index in candidates if polygon.intersects(self.shapely_polygons[index])]
+        
+    #     return shapely.unary_union([shapely.intersection(self.shapely_polygons[i], polygon) for i in indices])
     def get_intersection(self, polygon: ShapelyPolygon) -> BaseGeometry:
         """
         Returns the portion of the passed polygon that intersects with any of the index's polygon.
         """
 
+
         # This step is very important as it vastly reduces the amount of intersection checks we need to do, essentially making this operation O(1) instead of O(n)
         candidates = self.tree.query(polygon)
+        # intersections = [intersection_wrapper(polygon,self.shapely_polygons[index]) for index in candidates]
+        # filtered = [intersection ]
         # Query does not guaranetee they all intersect, but it does significantly reduce the amount of checks we need to do.
-        indices = [index for index in candidates if polygon.intersects(self.shapely_polygons[index])]
-        
-        return shapely.unary_union([shapely.intersection(self.shapely_polygons[i], polygon) for i in indices])
+        indices = [index for index in candidates if intersects_wrapper(polygon,self.shapely_polygons[index])]
 
+        
+        return union_wrapper([intersection_wrapper(self.shapely_polygons[i], polygon) for i in indices])
+    
+
+def intersects_wrapper(poly: ShapelyPolygon, geo: Geometry)-> bool:
+    return poly.intersects(geo)
+
+def intersection_wrapper(a: Geometry, b: Geometry) -> Geometry:
+    return shapely.intersection(a, b)
+
+def union_wrapper(geoms: list[Geometry]) -> BaseGeometry:
+    return shapely.unary_union(geoms)
 
 def distance(x1: float, y1: float, x2: float, y2: float) -> float:
     """

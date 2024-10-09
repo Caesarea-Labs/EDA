@@ -2,12 +2,11 @@ from pathlib import Path
 import random
 from typing import cast
 
-from gdstk import Polygon
-from shapely import STRtree, box
+from shapely import Point, Polygon, STRtree, box
 
 from eda.ui.pyvista_gui import plot_layout_with_qt_gui
 from .cache import cached
-from .gds_to_layout import get_large_gds_layout_test, parse_gds_layout
+from .gds_to_layout import get_corner_gds_layout_test, parse_gds_layout
 from .genetic_utils import sample_random_point
 from .geometry.geometry import Point2D, Polygon2D, Rect2D, create_polygon
 from .geometry.geometry_utils import PolygonIndex, distance, max_distance_between_points
@@ -49,16 +48,19 @@ def Generate_Initial_Population(layout: Layout, population_size: int, target_sig
         [random_point(signal_a_polygons) + random_point(signal_b_polygons) for _ in range(population_size)]
     )
 
-
-
-def get_test_ga_circuit_edit() -> Layout:
+bound_misses = 0
+total_checks = 0
+optional_model: GeneticAlgorithm2 | None = None
+def get_test_ga_circuit_edit(plot: bool = True, cache: bool = True) -> Layout:
     via_size = 0.2
     via_padding = 0.2
-    layout = get_large_gds_layout_test()
+    layout = get_corner_gds_layout_test()
+
+    bounds = Polygon([(1200, 730), (1200, 775), (1390, 775), (1390, 762), (1210, 762), (1210, 730)])
+
 
     signal_a = 0
     signal_b = 5
-    optional_model: GeneticAlgorithm2 | None = None
 
     def metal_polygon(metal: Metal) -> Polygon2D:
         return metal.polygon
@@ -72,7 +74,18 @@ def get_test_ga_circuit_edit() -> Layout:
         PolygonIndex([metal for metal in layer_metals if metal.signal_index == signal_b], metal_polygon) for layer_metals in metals_by_layer
     ]
 
+
+
+
     def cost_reward(x: float, y: float, layer: int, signal_index: list[PolygonIndex[Metal]]) -> tuple[float, float]:
+        global total_checks
+        total_checks += 1
+        if not bounds.contains(Point(x,y)):
+            global bound_misses
+            bound_misses += 1 
+            if bound_misses % 1000 == 1:
+                print(f"Bound misses: {bound_misses}/{total_checks}")
+
         # Construct a via to see what it would intersect with if this spot would have been chosen
         potential_via = box(x - via_size / 2, y - via_size / 2, x + via_size / 2, y + via_size / 2)
         # Only metals above this via pose a problem
@@ -124,7 +137,7 @@ def get_test_ga_circuit_edit() -> Layout:
         # Divide by max_distance to normalize the value to the problem size. 
         return abs(d - (via_size + via_padding)) / max_distance
 
-    @cached("5")
+    @cached("20", enabled = cache)
     def ga_test() -> list[float]:
         def calculate_bounds(layout: Layout) -> list[list[float]]:
             """
@@ -169,22 +182,16 @@ def get_test_ga_circuit_edit() -> Layout:
 
 
         # metal_layers = range(layout.layer_count())
-        Num_generation = 10000
-        # TODO: plot out the result via
-        initial_population = Generate_Initial_Population(layout, Num_generation, signal_a, signal_b)
-
-
-
-
+        population_size = 100
+        initial_population = Generate_Initial_Population(layout, population_size, signal_a, signal_b)
 
 
 
         algorithm_param = {
-                        'max_num_iteration': 30,
-                        'population_size': Num_generation,
+                        'max_num_iteration': 300,
+                        'population_size': population_size,
                         'mutation_probability': 0.1,
                         'elit_ratio': 0.01,
-                        #    'crossover_probability': 0.5,
                         'parents_portion': 0.3,
                         'crossover_type': 'uniform',
                         'max_iteration_without_improv': None}
@@ -193,12 +200,11 @@ def get_test_ga_circuit_edit() -> Layout:
         model = ga(dimension=6, variable_type=('real', 'real', 'int', 'real', 'real', 'int'),
                 variable_boundaries=varbound, algorithm_parameters=algorithm_param
                 )
-        # model.set_function_multiprocess(cost_func, n_jobs=-1)
         print("Running GA...")
 
        
 
-        result = model.run(no_plot=True, function=cost_func, function_timeout=1000, start_generation=Generation(variables= initial_population, scores= None))
+        result = model.run(progress_bar_stream=None, no_plot=True, function=cost_func, function_timeout=1000, start_generation=Generation(variables= initial_population, scores= None))
         global optional_model
         optional_model = model
         return result.variable.tolist()
@@ -211,14 +217,14 @@ def get_test_ga_circuit_edit() -> Layout:
     via_1 = build_via_at(result[0], result[1])
     via_2 = build_via_at(result[3], result[4])
 
-    best_score = cost_func(np.array(result))
-
     new_layout = layout.with_added_vias([via_1, via_2])
+
+    if plot and optional_model is not None:
+        none_check(optional_model).plot_results()
     return new_layout
     # plot_layout_with_qt_gui(new_layout)
 
-    # if optional_model is not None:
-    #     cast(GeneticAlgorithm2, optional_model).plot_results()
+
     
 
 

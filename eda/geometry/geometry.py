@@ -10,6 +10,9 @@ class Point2D:
 
     def __iter__(self) -> Iterator[float]:
         return iter((self.x, self.y))
+    
+    def to_tuple(self) -> tuple[float,float]:
+        return (self.x,self.y)
 
 
 Polygon2D = list[Point2D]
