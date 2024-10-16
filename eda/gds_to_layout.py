@@ -9,7 +9,7 @@ from pyvista import Plotter
 from .geometry.geometry import Point2D, Polygon2D, Rect2D, create_polygon
 from .layout_inflation import inflate_layout
 from .layout import Layout, Metal, Via
-from .polygon_slicing import GdsPolygonBB, cut_polygons, get_contained_rectangles
+from .geometry.polygon_slicing import GdsPolygonBB, cut_polygons, get_contained_rectangles
 from .signal_tracer import trace_signals
 from .ui.layout_plot import plot_layout
 from .ui.pyvista_gui import plot_layout_with_qt_gui

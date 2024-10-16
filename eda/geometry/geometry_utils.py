@@ -85,6 +85,7 @@ class PolygonIndex(Generic[T]):
 
         # This step is very important as it vastly reduces the amount of intersection checks we need to do, essentially making this operation O(1) instead of O(n)
         candidates = self.tree.query(polygon)
+        # test_list.append((polygon, [self.shapely_polygons[i] for i in candidates]))
         # intersections = [intersection_wrapper(polygon,self.shapely_polygons[index]) for index in candidates]
         # filtered = [intersection ]
         # Query does not guaranetee they all intersect, but it does significantly reduce the amount of checks we need to do.
@@ -92,11 +93,19 @@ class PolygonIndex(Generic[T]):
 
         
         return union_wrapper([intersection_wrapper(self.shapely_polygons[i], polygon) for i in indices])
+
+
     
 
 def intersects_wrapper(poly: ShapelyPolygon, geo: Geometry)-> bool:
     return poly.intersects(geo)
 
+# test_list: list[tuple[ShapelyPolygon, list[Geometry]]] = []
+# def format_test_list() -> str:
+#     def format_poly_list(geoms: list[Geometry]) -> str:
+#         return "\t\t[\n" + ",\n".join([f"\t\t\tPolygon({list(geom.exterior.coords)[:-1]})" for geom in geoms]) + "\n\t\t]"
+
+#     return "[\n" + ",\n".join([f"\t(\n\t\tPolygon({list(rect.exterior.coords)[:-1]}),\n{format_poly_list(poly_list)}\n\t)" for rect, poly_list in test_list]) + "\n]"
 def intersection_wrapper(a: Geometry, b: Geometry) -> Geometry:
     return shapely.intersection(a, b)
 
@@ -130,6 +139,8 @@ def max_distance_between_points(points: list[Point2D]) -> float:
         max_dist = max(max_dist, dist)
     
     return max_dist
+
+
 
 # def fast_get_intersecting(polygon_cache: STRtree, associated_list: list[T], polygon: ShapelyPolygon) -> list[T]:
 #     """

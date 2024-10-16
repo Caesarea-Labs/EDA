@@ -51,7 +51,7 @@ def Generate_Initial_Population(layout: Layout, population_size: int, target_sig
 bound_misses = 0
 total_checks = 0
 optional_model: GeneticAlgorithm2 | None = None
-def get_test_ga_circuit_edit(plot: bool = True, cache: bool = True) -> Layout:
+def get_test_ga_circuit_edit(plot: bool = True, cache: bool = True, population_size: int = 100, generations: int = 300) -> Layout:
     via_size = 0.2
     via_padding = 0.2
     layout = get_corner_gds_layout_test()
@@ -182,13 +182,13 @@ def get_test_ga_circuit_edit(plot: bool = True, cache: bool = True) -> Layout:
 
 
         # metal_layers = range(layout.layer_count())
-        population_size = 100
+        # population_size = population_size
         initial_population = Generate_Initial_Population(layout, population_size, signal_a, signal_b)
 
 
 
         algorithm_param = {
-                        'max_num_iteration': 300,
+                        'max_num_iteration': generations,
                         'population_size': population_size,
                         'mutation_probability': 0.1,
                         'elit_ratio': 0.01,

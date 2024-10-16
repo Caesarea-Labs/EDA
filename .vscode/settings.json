@@ -6,5 +6,11 @@
     },
     "code-runner.runInTerminal": true,
     "code-runner.customCommand": "python -m $fileNameWithoutExt",
+    "python.testing.pytestArgs": [
+        "tests",
+        "-rP"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
 
 }

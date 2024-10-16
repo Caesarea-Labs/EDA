@@ -4,7 +4,7 @@ import numpy as np
 from pyvistaqt import QtInteractor
 from ..geometry.geometry import Point2D
 from ..layout import Layout
-from ..polygon_triangulizer import AnnotatedMesh, ExtrudedPolygon, polygon_to_mesh
+from ..geometry.polygon_triangulizer import AnnotatedMesh, ExtrudedPolygon, polygon_to_mesh
 import pyvista as pv
 import vtk
 

@@ -2,7 +2,7 @@ from pyvista import Plotter
 from eda import test_layout
 from eda.ui.layout_plot import plot_meshes
 from eda.geometry.geometry import Point2D
-from eda.polygon_triangulizer import ExtrudedPolygon, polygon_to_mesh
+from eda.geometry.polygon_triangulizer import ExtrudedPolygon, polygon_to_mesh
 from eda.ui.pyvista_gui import plot_layout_with_qt_gui
 
 

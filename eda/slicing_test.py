@@ -1,4 +1,4 @@
-from .polygon_slicing import GdsPolygonBB, get_contained_rectangles
+from .geometry.polygon_slicing import GdsPolygonBB, get_contained_rectangles
 # from gpu_slicing import GdsPolygonBB, filter_intersecting_rectangles_gpu
 
 
