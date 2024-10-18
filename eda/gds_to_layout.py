@@ -11,7 +11,6 @@ from .layout_inflation import inflate_layout
 from .layout import Layout, Metal, Via
 from .geometry.polygon_slicing import GdsPolygonBB, cut_polygons, get_contained_rectangles
 from .signal_tracer import trace_signals
-from .ui.layout_plot import plot_layout
 from .ui.pyvista_gui import plot_layout_with_qt_gui
 from .utils import max_of, measure_time, min_of
 from .cache import cache_dir

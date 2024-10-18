@@ -1,5 +1,4 @@
-from .geometry.polygon_slicing import GdsPolygonBB, get_contained_rectangles
-# from gpu_slicing import GdsPolygonBB, filter_intersecting_rectangles_gpu
+from eda.geometry.polygon_slicing import GdsPolygonBB, get_contained_rectangles
 
 
 # Various methods for creating test rectangles to test intersections on
@@ -19,7 +18,7 @@ def rectTall(xy: tuple[float, float], height: int) -> GdsPolygonBB:
 
 
 # Example Usage
-if __name__ == "__main__":
+def test_slicing():
     intersecting_points = [
         (x * 10 + 0.1, y * 10 + 0.1) for y in range(5) for x in range(5)
     ]

@@ -8,7 +8,6 @@ from .geometry.geometry import Point2D, Polygon2D, Rect2D
 from .utils import max_of, min_of, none_check
 
 
-
 class LayoutPolygon:
     layer: Optional[int]
     """
@@ -47,9 +46,13 @@ class Metal(LayoutPolygon):
     gds_layer: Optional[int] = None
     layer: Optional[int] = None
 
+    def with_layer(self, layer: int) -> 'Metal':
+        return Metal(self.polygon, signal_index=self.signal_index, name=self.name, gds_layer=self.gds_layer, layer=layer)
+
     def __repr__(self) -> str:
         return f"{self.layer}:{represent_polygon(self.polygon)} #{self.signal_index} ({name})"
-    
+
+
 def represent_polygon(polygon: Polygon2D) -> str:
     if len(polygon) == 4:
         # quad
@@ -65,7 +68,7 @@ def represent_polygon(polygon: Polygon2D) -> str:
         if abs(width - height) < 0.000001:
             # Square
             return f"Square[({min_x}, {min_y}), s={width}]"
-        else: 
+        else:
             # Other quad
             return f"Quad[({min_x, min_y})->({max_x}, {max_y})]"
     else:
@@ -74,24 +77,36 @@ def represent_polygon(polygon: Polygon2D) -> str:
         ])
 
 
-
 @dataclass
 class Via(LayoutPolygon):
     """
-       A connection between two metals on different layers, from bottomLayer to topLayer.
+       A connection between two metals on different layers, from bottom_layer to top_layer.
        A via has a physical shape, denoted by the rect propery.
        """
 
-    # bottom_layer: int
-    # top_layer: int
     rect: Rect2D
     name: str = "Via"
     gds_layer: Optional[int] = None
-    layer: Optional[int] = None
+    """
+    Assigned when a via is loaded from a GDS file, but not necessary for plotting and final algorithms.
+    """
+    bottom_layer: Optional[int] = None
+    """
+    The bottom-most Z value of the via, usually 1 less than the top_layer. 
+    Assigned with inflate_layout and required for most applications. 
+    """
+    top_layer: Optional[int] = None
+    """
+    The top-most Z value of the via, usually 1 more than the bottom_layer. 
+    Assigned with inflate_layout and required for most applications. 
+    """
     mark: bool = False
     """
-    I true, will be specially marked when plotted out
+    If true, will be specially marked when plotted out
     """
+
+    def with_layers(self, bottom: int, top: int) -> 'Via':
+        return Via(rect=self.rect, name=self.name, gds_layer=self.gds_layer, mark=self.mark, bottom_layer=bottom, top_layer=top)
 
     def __post_init__(self):
         self.vertices = self.rect.as_polygon()
@@ -116,22 +131,22 @@ class Layout:
         """
             Returns the highest layer of metals, plus 1
         """
-        return max_of(self.metals, lambda m : none_check(m.layer)) + 1
-    
+        return max_of(self.metals, lambda m: none_check(m.layer)) + 1
+
     def max_signal(self) -> int:
         """
             Returns the highest layer of metals, plus 1
         """
-        return max_of(self.metals, lambda m : none_check(m.layer)) + 1
-    
+        return max_of(self.metals, lambda m: none_check(m.layer)) + 1
+
     def metals_by_layer(self) -> list[list[Metal]]:
         layers = [[] for _ in range(len(self.metals))]
         for metal in self.metals:
             layers[none_check(metal.layer)].append(metal)
-        
+
         return layers
-    
-    def with_added_vias(self, vias: list[Via])-> 'Layout':
+
+    def with_added_vias(self, vias: list[Via]) -> 'Layout':
         return Layout(self.metals, self.vias + vias)
 
 

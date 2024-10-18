@@ -21,14 +21,13 @@ class LayoutPlotBindings:
     mesh_groups: MeshDict
 
 
-# TODO: add button to show all signals
 def plot_layout_standalone(layout: Layout, show_text: bool = False):
     plotter = pv.Plotter()
-    plot_layout(layout, show_text, plotter)
+    add_layout_elements_to_plot(layout, show_text, plotter)
     plotter.show()
 
 
-def plot_layout(layout: Layout, show_text: bool, plotter: pv.Plotter) -> LayoutPlotBindings:
+def add_layout_elements_to_plot(layout: Layout, show_text: bool, plotter: pv.Plotter) -> LayoutPlotBindings:
     
     """
     Will draw the layout in 3D.
@@ -38,8 +37,8 @@ def plot_layout(layout: Layout, show_text: bool, plotter: pv.Plotter) -> LayoutP
 
     for via in layout.vias:
         polygon = ExtrudedPolygon(
-            z_base=none_check(via.layer) if not via.mark else 0,
-            z_top=none_check(via.layer) + 1,
+            z_base=none_check(via.bottom_layer) if not via.mark else 0,
+            z_top=none_check(via.top_layer),
             color="red" if via.mark else "black",
             vertices=via.rect.as_polygon(),
             alpha=0.3,

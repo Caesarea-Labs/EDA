@@ -20,8 +20,8 @@ import pyvista as pv
 
 from eda.layout import Layout
 from eda.ui.hover_callback import on_world_hover
-from eda.ui.layout_plot import MeshGroup, plot_layout
-from eda.test_layout import test_layout_const
+from eda.ui.layout_plot import MeshGroup, add_layout_elements_to_plot
+from tests.test_layout import test_layout_const
 
 
 class MainWindow(QMainWindow):
@@ -56,7 +56,7 @@ class MainWindow(QMainWindow):
 
 
 
-        bindings = plot_layout(self.c_layout, show_text=False, plotter=self.plotter)
+        bindings = add_layout_elements_to_plot(self.c_layout, show_text=False, plotter=self.plotter)
 
         # Need to wrap the text in something for it to work
         cursor_pos = QScrollArea(self)

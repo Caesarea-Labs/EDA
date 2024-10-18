@@ -5,7 +5,7 @@ from networkx import Graph, connected_components
 from shapely import Polygon, STRtree
 
 from .layout import Layout, Metal, Point2D, Via
-from .test_layout import test_layout_const
+from ..tests.test_layout import test_layout_const
 from .utils import max_of, none_check
 
 
@@ -44,8 +44,8 @@ def signals_to_graph(layout: Layout) -> Graph:
         # Usually bottom_connections contains the 1 metal connected to the bottom of the via,
         #  and top_connections contains the 1 metal connected to the top of the via, and there is just 1 pair we need to connect.
         # However, sometimes the via may intersect with more metals so we handle that case as well.
-        bottom_connections = get_intersecting_metals(via.vertices, metals_by_layer[none_check(via.layer)])
-        top_connections = get_intersecting_metals(via.vertices, metals_by_layer[none_check(via.layer) + 1])
+        bottom_connections = get_intersecting_metals(via.vertices, metals_by_layer[none_check(via.bottom_layer)])
+        top_connections = get_intersecting_metals(via.vertices, metals_by_layer[none_check(via.bottom_layer) + 1])
         all_connections = bottom_connections + top_connections
 
         # If there's a connection between two metals, add that connection as an edge.

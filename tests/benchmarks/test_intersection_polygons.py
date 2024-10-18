@@ -1,7 +1,9 @@
 from shapely import Polygon
 
+from eda.geometry.fast_area_intersection import remove_polygon_overlaps
 
-test_intersection_polygons_const = [
+
+test_intersection_polygons_const = [(rect, remove_polygon_overlaps(polys)) for rect, polys in [
 	(
 		Polygon([(1200.903859785151, 733.8519224257617), (1200.903859785151, 734.0519224257617), (1200.7038597851513, 734.0519224257617), (1200.7038597851513, 733.8519224257617)]),
 		[
@@ -151,4 +153,4 @@ test_intersection_polygons_const = [
 			Polygon([(1210.0, 743.84), (1208.585, 743.84), (1208.585, 744.64), (1210.0, 744.64)])
 		]
 	)
-]
+]]

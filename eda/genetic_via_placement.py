@@ -213,7 +213,7 @@ def get_test_ga_circuit_edit(plot: bool = True, cache: bool = True, population_s
     result = ga_test()
     def build_via_at(x: float, y: float) -> Via:
         rect = Rect2D(x - via_size / 2, x + via_size / 2, y - via_size / 2, y + via_size / 2)
-        return Via(rect, layer = layout.layer_count(), mark=True)
+        return Via(rect, bottom_layer = layout.layer_count(), mark=True)
     via_1 = build_via_at(result[0], result[1])
     via_2 = build_via_at(result[3], result[4])
 

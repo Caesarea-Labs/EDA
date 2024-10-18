@@ -48,7 +48,7 @@ class Shape2D:
                 raise ValueError("Angle must be 90, 180, or 270 degrees")
         pass
 
-    def translate(self, translate_x: int, translate_y: int) -> 'Shape2D':
+    def translate(self, translate_x: float, translate_y: float) -> 'Shape2D':
         """Moves all vertices by the given x and y translation values."""
         return self.with_vertices_and_center(
             [Point2D(x + translate_x, y + translate_y) for (x, y) in self.vertices],

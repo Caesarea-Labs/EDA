@@ -3,7 +3,7 @@
 from functools import wraps
 import math
 import time
-from typing import Any, Callable, Optional, TypeVar, cast
+from typing import Any, Callable, Iterable, Optional, TypeVar, cast
 
 from matplotlib.pylab import f
 
@@ -60,6 +60,12 @@ def sum_of(arr: list[T],  key: Callable[[T], float]) -> float:
         sum += key(item)
     return sum
 
+def find(arr: Iterable[T], key: Callable[[T], bool]) -> Optional[T]:
+    for item in arr:
+        if key(item):
+            return item
+    return None
+
 def distinct(arr: list[T]) -> list[T]:
     """
     Returns all distinct values of the array, by checking their equality. 
@@ -72,3 +78,19 @@ def distinct(arr: list[T]) -> list[T]:
             existing.add(element)
 
     return result
+
+def equals_roughly(numA: float, numB: float, precision_decimal_points: int = 10) -> bool:
+    """
+    Check if two floating-point numbers are approximately equal up to a specified number of decimal places.
+
+    Args:
+        numA (float): The first number to compare.
+        numB (float): The second number to compare.
+        precision_decimal_points (int, optional): The number of decimal places to consider. Defaults to 10.
+
+    Returns:
+        bool: True if the numbers are approximately equal up to the specified precision, False otherwise.
+    """
+    roundedA = round(numA, precision_decimal_points)
+    roundedB = round(numB, precision_decimal_points)
+    return roundedA == roundedB
