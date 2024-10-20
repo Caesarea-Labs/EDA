@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from typing import Any, TypedDict, cast
 import numpy as np
 from pyvistaqt import QtInteractor
+
+from eda.ui.plottable import Plottable
 from ..geometry.geometry import Point2D
 from ..layout import Layout
 from ..geometry.polygon_triangulizer import AnnotatedMesh, ExtrudedPolygon, polygon_to_mesh
@@ -10,8 +12,7 @@ import vtk
 
 from ..utils import none_check
 
-fill_colors = ['cyan', 'lightgreen', 'lightblue', 'orange', 'yellow',
-               'pink', 'lightcoral', 'lightgray', 'lavender', 'beige']
+
 MeshGroup = TypedDict("MeshGroup", color=str, actor=pv.Actor)
 MeshDict = dict[str, MeshGroup]
 
@@ -21,49 +22,49 @@ class LayoutPlotBindings:
     mesh_groups: MeshDict
 
 
-def plot_layout_standalone(layout: Layout, show_text: bool = False):
+def plot_layout_standalone(layout: Plottable, show_text: bool = False):
     plotter = pv.Plotter()
-    add_layout_elements_to_plot(layout, show_text, plotter)
+    plot_meshes(layout.to_meshes(), show_text, plotter)
     plotter.show()
 
 
-def add_layout_elements_to_plot(layout: Layout, show_text: bool, plotter: pv.Plotter) -> LayoutPlotBindings:
+# def add_layout_elements_to_plot(layout: Layout, show_text: bool, plotter: pv.Plotter) -> LayoutPlotBindings:
     
-    """
-    Will draw the layout in 3D.
-    If show_text is true, every metal and via will have its named displayed. This should be turned off for large layouts. 
-    """
-    meshes = []
+#     """
+#     Will draw the layout in 3D.
+#     If show_text is true, every metal and via will have its named displayed. This should be turned off for large layouts. 
+#     """
+#     meshes = []
 
-    for via in layout.vias:
-        polygon = ExtrudedPolygon(
-            z_base=none_check(via.bottom_layer) if not via.mark else 0,
-            z_top=none_check(via.top_layer),
-            color="red" if via.mark else "black",
-            vertices=via.rect.as_polygon(),
-            alpha=0.3,
-            name=via.name,
-            group_name="edit" if via.mark else "vias"
-        )
-        meshes.append(polygon_to_mesh(polygon))
+#     for via in layout.vias:
+#         polygon = ExtrudedPolygon(
+#             z_base=none_check(via.bottom_layer),
+#             z_top=none_check(via.top_layer, f"Missing top_layer value for via (bottom_layer is specified: {via.bottom_layer})"),
+#             color="red" if via.mark else "black",
+#             vertices=via.rect.as_polygon(),
+#             alpha=0.3,
+#             name=via.name,
+#             group_name="edit" if via.mark else "vias"
+#         )
+#         meshes.append(polygon_to_mesh(polygon))
 
-    for metal in layout.metals:
-        polygon = ExtrudedPolygon(
-            z_base=none_check(metal.layer) - 0.25,
-            z_top=none_check(metal.layer) + 0.25,
-            color=fill_colors[none_check(metal.signal_index) % len(fill_colors)],
-            # edge_color=edge_colors[metal.signal_index % len(edge_colors)],
-            vertices=metal.polygon,
-            alpha=0.5,
-            name=metal.name,
-            group_name=str(metal.signal_index)
-        )
-        meshes.append(polygon_to_mesh(polygon))
+#     for metal in layout.metals:
+#         polygon = ExtrudedPolygon(
+#             z_base=none_check(metal.layer) - 0.25,
+#             z_top=none_check(metal.layer) + 0.25,
+#             color=fill_colors[none_check(metal.signal_index) % len(fill_colors)],
+#             # edge_color=edge_colors[metal.signal_index % len(edge_colors)],
+#             vertices=metal.polygon,
+#             alpha=0.5,
+#             name=metal.name,
+#             group_name=str(metal.signal_index)
+#         )
+#         meshes.append(polygon_to_mesh(polygon))
 
     
 
-    # Convert polygons to meshes
-    return plot_meshes(meshes, show_text, plotter)
+#     # Convert polygons to meshes
+#     return plot_meshes(meshes, show_text, plotter)
 
 
 # @dataclass

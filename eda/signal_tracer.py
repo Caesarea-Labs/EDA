@@ -5,7 +5,6 @@ from networkx import Graph, connected_components
 from shapely import Polygon, STRtree
 
 from .layout import Layout, Metal, Point2D, Via
-from ..tests.test_layout import test_layout_const
 from .utils import max_of, none_check
 
 
@@ -96,16 +95,3 @@ def index_metals_by_layer(layout: Layout) -> list[tuple[STRtree, list[Metal]]]:
     # return [STRtree(list) for list in layers]
 
 
-def test_layout_without_signals() -> Layout:
-    """
-    test layout converted to signal "hard mode", with no signal information.
-    """
-    new_metals = [Metal(polygon=metal.polygon, layer=metal.layer, signal_index=None, name=metal.name,
-                        gds_layer=metal.gds_layer) for metal in test_layout_const.metals]
-    return Layout(new_metals, test_layout_const.vias)
-
-
-if __name__ == "__main__":
-    no_signals = test_layout_without_signals()
-    traced = trace_signals(no_signals)
-    # plotly_plot_layout(traced, show_text=True)

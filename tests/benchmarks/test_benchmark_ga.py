@@ -1,6 +1,6 @@
 
-from eda.genetic_via_placement import get_test_ga_circuit_edit
 from benchmark_utils import benchmark
+from eda.circuitedit.circuit_edit_via import get_test_ga_circuit_edit
 
 # @measure_time
 def test_benchmark_geneticalgorithm2():

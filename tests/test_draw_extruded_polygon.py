@@ -1,10 +1,9 @@
 from pyvista import Plotter
-from tests import test_layout
 from eda.ui.layout_plot import plot_meshes
 from eda.geometry.geometry import Point2D
 from eda.geometry.polygon_triangulizer import ExtrudedPolygon, polygon_to_mesh
 from eda.ui.pyvista_gui import plot_layout_with_qt_gui
-
+from .test_layout import test_layout_const
 
 def test_draw_extruded_polygon():
     polygon_1 = ExtrudedPolygon(
@@ -44,4 +43,4 @@ def test_draw_extruded_polygon():
     
 
 def test_draw_test_layout():
-    plot_layout_with_qt_gui(test_layout.test_layout_const)
+    plot_layout_with_qt_gui(test_layout_const)

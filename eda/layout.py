@@ -4,6 +4,10 @@ from typing import Optional, Iterator
 
 from shapely import Polygon, STRtree
 
+from eda.geometry.geometry_utils import to_shapely_polygon
+from eda.geometry.polygon_triangulizer import AnnotatedMesh, ExtrudedPolygon, polygon_to_mesh
+from eda.ui.plottable import Plottable
+
 from .geometry.geometry import Point2D, Polygon2D, Rect2D
 from .utils import max_of, min_of, none_check
 
@@ -113,7 +117,7 @@ class Via(LayoutPolygon):
 
 
 @dataclass
-class Layout:
+class Layout(Plottable):
     """
         Layout of a chip, containing metals and connections (vias)
     """
@@ -148,7 +152,42 @@ class Layout:
 
     def with_added_vias(self, vias: list[Via]) -> 'Layout':
         return Layout(self.metals, self.vias + vias)
+    
+    def to_meshes(self) -> list[AnnotatedMesh]:
+        fill_colors = ['cyan', 'lightgreen', 'lightblue', 'orange', 'yellow',
+               'pink', 'lightcoral', 'lightgray', 'lavender', 'beige']
+        
+        meshes = []
 
+        for via in self.vias:
+            meshes.append(via_to_mesh(via, "black", "vias"))
+
+        for metal in self.metals:
+            polygon = ExtrudedPolygon(
+                z_base=none_check(metal.layer) - 0.25,
+                z_top=none_check(metal.layer) + 0.25,
+                color=fill_colors[none_check(metal.signal_index) % len(fill_colors)],
+                # edge_color=edge_colors[metal.signal_index % len(edge_colors)],
+                vertices=metal.polygon,
+                alpha=0.5,
+                name=metal.name,
+                group_name=str(metal.signal_index)
+            )
+            meshes.append(polygon_to_mesh(polygon))
+
+        return meshes
+    
+def via_to_mesh(via: Via, color: str, group_name: str)-> AnnotatedMesh:
+    polygon = ExtrudedPolygon(
+        z_base=none_check(via.bottom_layer),
+        z_top=none_check(via.top_layer, f"Missing top_layer value for via (bottom_layer is specified: {via.bottom_layer})"),
+        color=color,
+        vertices=via.rect.as_polygon(),
+        alpha=0.3,
+        name=via.name,
+        group_name=group_name
+    )
+    return polygon_to_mesh(polygon)
 
 MetalIndex = dict[int, STRtree]
 
@@ -177,8 +216,3 @@ def index_metals_by_gds_layer(layout: Layout) -> MetalIndex:
     return tree_index
 
 
-def to_shapely_polygon(vertices: list[Point2D]) -> Polygon:
-    """
-    Convert 2d points to a form supported by shapely
-    """
-    return Polygon([(x, y) for x, y in vertices])

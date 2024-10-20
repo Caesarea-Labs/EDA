@@ -6,11 +6,12 @@ import time
 from typing import Any, Callable, Iterable, Optional, TypeVar, cast
 
 from matplotlib.pylab import f
+from numpy import iterable
 
 
 T = TypeVar("T")
-def none_check(value: Optional[T]) -> T:
-    assert value is not None, "Expected value to not be None"
+def none_check(value: Optional[T], msg: str = "Expected value to not be None") -> T:
+    assert value is not None, msg
     return value
 
 def measure_time(func: Callable[..., T]) -> Callable[..., T]:
@@ -27,11 +28,10 @@ def measure_time(func: Callable[..., T]) -> Callable[..., T]:
 
 R = TypeVar('R', int, float)  # The type of the result (int or float)
 
-def max_of(arr: list[T], key: Callable[[T], R]) -> R:
+def max_of(arr: Iterable[T], key: Callable[[T], R]) -> R:
     """
     Returns the maximum value in the array given by the key
     """
-    assert len(arr) > 0
     max = -math.inf
     for element in arr:
         value = key(element)
@@ -39,11 +39,10 @@ def max_of(arr: list[T], key: Callable[[T], R]) -> R:
             max = value
     return cast(R, max)
 
-def min_of(arr: list[T], key: Callable[[T], R]) -> R:
+def min_of(arr: Iterable[T], key: Callable[[T], R]) -> R:
     """
     Returns the minimum value in the array given by the key
     """
-    assert len(arr) > 0
     min = math.inf
     for element in arr:
         value = key(element)
@@ -94,3 +93,6 @@ def equals_roughly(numA: float, numB: float, precision_decimal_points: int = 10)
     roundedA = round(numA, precision_decimal_points)
     roundedB = round(numB, precision_decimal_points)
     return roundedA == roundedB
+
+def flatten(nested_list: Iterable[Iterable[T]])-> list[T]:
+    return [inner for outer in nested_list for inner in outer]

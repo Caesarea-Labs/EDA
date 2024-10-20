@@ -7,12 +7,12 @@ from typing import Tuple, cast
 from pyvista import Plotter
 
 from .geometry.geometry import Point2D, Polygon2D, Rect2D, create_polygon
-from .layout_inflation import inflate_layout
+from .layout_inflation import GdsLayerMapping, build_gds_layer_mapping, inflate_layout
 from .layout import Layout, Metal, Via
 from .geometry.polygon_slicing import GdsPolygonBB, cut_polygons, get_contained_rectangles
 from .signal_tracer import trace_signals
 from .ui.pyvista_gui import plot_layout_with_qt_gui
-from .utils import max_of, measure_time, min_of
+from .utils import flatten, max_of, measure_time, min_of
 from .cache import cache_dir
 
 cell_name = "top_io"
@@ -141,31 +141,30 @@ def gds_polygon_to_via(polygon: Polygon) -> Via:
     )
 
 
-def parse_gds_layout(gds_file: Path, bounding_box: Polygon2D, metal_layers: set[int], via_layers: set[int], cache_key: str) -> Layout:
+def parse_gds_layout(gds_file: Path, bounding_box: Polygon2D, layer_mappings: GdsLayerMapping, cache_key: str) -> Layout:
+    metal_layers = set(flatten(layer_mappings.metal_gds_layer_order))
+    via_layers = set(layer_mappings.via_gds_layer_connections.keys())
     layout = slice_gds_to_layout(gds_file,
                                  bounding_box,
                                  metal_layers=metal_layers,
                                  via_layers=via_layers,
                                  cache_key=cache_key
                                  )
-    with_layers = inflate_layout(layout)
+    with_layers = inflate_layout(layout, layer_mappings)
     return trace_signals(with_layers)
 
 
 def get_device_gds_layout_test() -> Layout:
     bounds: Polygon2D = create_polygon([(1190, 730), (1190, 790), (1390, 790), (1390, 762), (1210, 762), (1210, 730)])
+    # raise AssertionError("TODO")
     return parse_gds_layout(
         Path("gds/test_gds_1.gds"),
         bounds,
-        metal_layers={
-            10, 30,
-            61, 62, 63, 64, 65, 66
-        },
-        via_layers={
-            50,
-            70, 71, 72, 73, 74
-        },
-        cache_key="device_test"
+        layer_mappings=build_gds_layer_mapping(
+            metal_gds_layer_order=[[40, 43], 30, 61, 62, 63, 64, 65, 66],
+            via_gds_layers=[[50], 70, 71, 72, 73, 74]
+        ),
+        cache_key="device_test_2"
     )
 
 
@@ -174,8 +173,10 @@ def get_corner_gds_layout_test() -> Layout:
     return parse_gds_layout(
         Path("gds/test_gds_1.gds"),
         bounds,
-        metal_layers={61, 62, 63, 64, 65, 66},
-        via_layers={70, 71, 72, 73, 74},
+        layer_mappings=build_gds_layer_mapping(
+            metal_gds_layer_order=[61, 62, 63, 64, 65, 66],
+            via_gds_layers=[70, 71, 72, 73, 74],
+        ),
         cache_key="corner_test"
     )
 

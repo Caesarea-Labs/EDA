@@ -5,7 +5,7 @@ from eda.geometry.geometry import Point2D, Rect2D, Polygon2D
 from rtree import index
 from shapely.geometry.base import BaseGeometry
 
-from typing import List, Literal, Tuple, cast
+from typing import List, Literal, Optional, Tuple, cast
 import bisect
 
 from eda.geometry.shapely_utils import unpack_polygons
@@ -13,13 +13,84 @@ from eda.geometry.shapely_utils import unpack_polygons
 Edge = Literal["left", "right", "bottom", "top"]
 
 
-def intersecting_area(rect: Rect2D, polygons: List[Polygon2D]) -> float:
+def intersecting_area(polygon: Polygon2D, polygons: list[Polygon2D]) -> float:
     """
-    Efficiently calculates the total area that the rect intersects with the given polygons. 
-    Assumes the list of polygons don't intersect. To ensure this, call 
+    Efficiently calculates the total area that the convex polygon intersects with the given convex polygons. 
+    Assumes the list of polygons don't intersect. To ensure this, call remove_polygon_overlaps.
+    Also assumes the list of polygons are convex. To ensure this, call TODO. 
     """
+    pass
 
-# TODO: second polygon overlaps with third polygon, see why that part is not getting removed on second iteration.
+
+
+def intersection(a: Polygon2D, b: Polygon2D) -> Polygon2D:
+    """
+    Assumes the two polygons are convex.
+    """
+    output_list: List[Point2D] = a.copy()
+    clipper: List[Point2D] = b
+
+    for i in range(len(clipper)):
+        input_list = output_list[:]
+        output_list = []
+
+        if not input_list:
+            break  # No intersection
+
+        # Define the current edge of the clipping polygon
+        clip_edge_start = clipper[i]
+        clip_edge_end = clipper[(i + 1) % len(clipper)]
+
+        for j in range(len(input_list)):
+            current_point = input_list[j]
+            prev_point = input_list[j - 1]  # Handles wrap-around
+
+            current_inside = is_inside(current_point, clip_edge_start, clip_edge_end)
+            prev_inside = is_inside(prev_point, clip_edge_start, clip_edge_end)
+
+            if current_inside:
+                if not prev_inside:
+                    # Edge goes from outside to inside; add intersection point
+                    intersection_point = compute_intersection(
+                        prev_point, current_point, clip_edge_start, clip_edge_end
+                    )
+                    if intersection_point:
+                        output_list.append(intersection_point)
+                output_list.append(current_point)
+            elif prev_inside:
+                # Edge goes from inside to outside; add intersection point
+                intersection_point = compute_intersection(
+                    prev_point, current_point, clip_edge_start, clip_edge_end
+                )
+                if intersection_point:
+                    output_list.append(intersection_point)
+
+    return Polygon2D(output_list)
+
+def is_inside(p: Point2D, edge_start: Point2D, edge_end: Point2D) -> bool:
+    # Determines if point p is inside the half-plane defined by edge_start -> edge_end
+    return cross_product(edge_start, edge_end, p) >= 0
+
+def cross_product(a: Point2D, b: Point2D, c: Point2D) -> float:
+    # Computes the cross product (b - a) x (c - a)
+    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+
+def compute_intersection(
+    s1: Point2D, e1: Point2D, s2: Point2D, e2: Point2D
+) -> Optional[Point2D]:
+    # Computes the intersection point of lines s1-e1 and s2-e2
+    denominator = (e1.x - s1.x) * (e2.y - s2.y) - (e1.y - s1.y) * (e2.x - s2.x)
+    if abs(denominator) < 1e-10:
+        # Lines are parallel or coincident
+        return None
+
+    numerator1 = (s1.y - s2.y) * (e2.x - s2.x) - (s1.x - s2.x) * (e2.y - s2.y)
+    t1 = numerator1 / denominator
+
+    x = s1.x + t1 * (e1.x - s1.x)
+    y = s1.y + t1 * (e1.y - s1.y)
+    return Point2D(x, y)
+
 def remove_polygon_overlaps(polygons: list[Polygon]) -> list[Polygon]:
     """
     Returns a list of polygons encompassing the same area, but don't overlap. 

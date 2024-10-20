@@ -1,8 +1,11 @@
+import array
 from dataclasses import dataclass, replace
 import itertools
 from typing import Iterable, Optional, Tuple, cast
 
 from shapely import STRtree, Polygon
+
+from eda.geometry.geometry_utils import PolygonIndex
 
 from .layout import Layout, Metal, MetalIndex, Via, index_metals_by_gds_layer, to_shapely_polygon
 # from .plotly_layout import plotly_plot_layout
@@ -11,65 +14,84 @@ from .utils import none_check, sum_of
 ViaIndex = dict[int, list[Via]]
 
 
-# TODO: The two metal edges are the one with only one via connecting them. To decide which one is on top, use the one with the higher gds_layer value.
 @dataclass
-class ViaLayerConnections:
-    close_start: int
+class ViaLayerMapping:
+    bottom_metal_index: int
     """
-    A layer that is 1 physical layer below the end.
+    The metal layer the longest vias in the layer start at. Usually top_metal_index-1. 
     """
-    far_start: Optional[int]
+    top_metal_index: int
     """
-    Possible second layer this via layer is connected to, with a distance of 2 layers from the end.
+    The metal layer all vias end at. 
     """
-    end: int
 
-    def all_connections(self) -> list[int]:
-        if self.far_start is None:
-            return [self.close_start, self.end]
+
+@dataclass
+class GdsLayerMapping:
+    metal_gds_layer_order: list[list[int]]
+    """
+    The first value is all gds_layers mapped to the first physical layer, the second one is all above it, and so on. 
+    """
+    via_gds_layer_connections: dict[int, ViaLayerMapping]
+    """
+    A map from each gds via layer to the vertical range that its vias span.  
+    """
+
+@dataclass
+class ViaLayer:
+    gds_layer: int
+    double: bool
+    """
+    If true, the via will be considered a double via that connects 3 layers of metals. 
+    """
+
+def build_gds_layer_mapping(metal_gds_layer_order: list[int | list[int]], via_gds_layers: list[int | list[int]]) -> GdsLayerMapping:
+    """
+    Utility method for constructing a GdsLayerMapping.
+    metal_gds_layer_order will interpret single values as a list with that element as the only element.
+    via_layers will interpret each element as a seperate via gds_layer, with the bottom metal layer of the via being equal to the index.
+    If a list is provided instead of a single element, the via will be considered a double via that connects 3 layers of metals. 
+    """
+    via_mapping: dict[int, ViaLayerMapping] = {}
+    metal_index = 0
+    for via_gds_layer in via_gds_layers:
+        if isinstance(via_gds_layer, int):
+            via_mapping[via_gds_layer] = ViaLayerMapping(bottom_metal_index=metal_index, top_metal_index=metal_index + 1)
+            metal_index += 1
         else:
-            return [self.close_start, self.far_start, self.end]
+            actual_gds_layer =  via_gds_layer[0]
+            via_mapping[actual_gds_layer] = ViaLayerMapping(bottom_metal_index=metal_index, top_metal_index=metal_index + 2)
+            metal_index += 2
+    metals_as_list = [[layers] if isinstance(layers, int) else layers for layers in  metal_gds_layer_order]
+    return GdsLayerMapping(metals_as_list, via_mapping)
 
 
-@dataclass
-class OrderLayersResult:
-    metal_gds_layer_to_layer: dict[int, int]
-    """
-    A map from a metal gds_layer to an actual 0-indexed physical 3D metal layer. 
-    """
-    via_gds_layer_connections: dict[int, ViaLayerConnections]
-    """
-    A map from a via gds_layer to the actual 0-indexed physical 3D bottom and top layers that a via is connected to. 
-    """
+# @dataclass
+# class OrderLayersResult:
+#     metal_gds_layer_to_layer: dict[int, int]
+#     """
+#     A map from a metal gds_layer to an actual 0-indexed physical 3D metal layer. 
+#     """
+#     via_gds_layer_connections: dict[int, ViaLayerConnections]
+#     """
+#     A map from a via gds_layer to the actual 0-indexed physical 3D bottom and top layers that a via is connected to. 
+#     """
 
 
-def inflate_layout(layout: Layout) -> Layout:
+def inflate_layout(layout: Layout, layer_mapping: GdsLayerMapping) -> Layout:
     """
     Returns a new layout, with the `layer` value reassigned in the `LayoutPolygon`s of the layout
-    It does this by considering the initial `gds_layer` value of the `LayoutPolygon`s, and by checking which vias exist at metal intersections.
-    If a via layer often exists in an intersection of 2 specific metal layers, we deduce that it physically exists between them.
-    If there's a place where a via exists but one of 2 layers don't, that means that via layer cannot be connecting between them.
     """
 
-    metal_index = index_metals_by_gds_layer(layout)
-    via_layers = index_vias_by_gds_layer(layout)
-    via_to_metal_layers: dict[int, ViaLayerConnections] = {
-        # Assign connected metals for each via layer
-        none_check(via_layer): get_via_layer_connected_metal_layers(via_layer, vias, metal_index) for via_layer, vias in via_layers.items()
-    }
-    metal_gds_layer_with_mappings = {metal_gds_layer for connections in via_to_metal_layers.values() for metal_gds_layer in connections.all_connections()}
-    actual_gds_metal_layers = metal_index.keys()
+    # Map gds layers to their index
+    gds_layer_to_index: dict[int, int] = {}
+    for index, gds_layers in enumerate(layer_mapping.metal_gds_layer_order):
+        for gds_layer in gds_layers:
+            gds_layer_to_index[gds_layer] = index
 
-    assert metal_gds_layer_with_mappings == actual_gds_metal_layers, \
-    f"Could not find the via layers that connect to every metal layer. \
-    This can happen if double-length via layers are ambigous in what are the two metal layers they connect to.\
-    All metal layers: {set(actual_gds_metal_layers)}. Metal layers with mappings: {metal_gds_layer_with_mappings} "
-
-
-    order_result = order_layers(via_to_metal_layers)
-
-    new_metals = [inflate_metal(metal, order_result.metal_gds_layer_to_layer) for metal in layout.metals]
-    new_vias = [inflate_via(via, order_result.via_gds_layer_connections, metal_index) for via in layout.vias]
+    new_metals = [inflate_metal(metal, gds_layer_to_index) for metal in layout.metals]
+    metal_index = index_metals_by_layer(new_metals)
+    new_vias = [inflate_via(via, layer_mapping.via_gds_layer_connections, metal_index) for via in layout.vias]
 
     return Layout(new_metals, new_vias)
 
@@ -77,244 +99,83 @@ def inflate_layout(layout: Layout) -> Layout:
 def inflate_metal(metal: Metal, metal_gds_layer_to_layer: dict[int, int]) -> Metal:
     gds_layer = none_check(metal.gds_layer)
 
-    assert gds_layer in metal_gds_layer_to_layer, f"There was no gds layer mapping for the metal gds layer {gds_layer}. Available mappings: {metal_gds_layer_to_layer.keys()}"
+    assert gds_layer in metal_gds_layer_to_layer, f"There was no gds layer mapping for the metal gds layer {gds_layer}. Available mappings: {set(metal_gds_layer_to_layer.keys())}"
     return metal.with_layer(metal_gds_layer_to_layer[gds_layer])
 
 
-def inflate_via(via: Via, via_gds_layer_connections: dict[int, ViaLayerConnections], metal_index: MetalIndex) -> Via:
+def inflate_via(via: Via, via_gds_layer_connections:  dict[int, ViaLayerMapping], metal_index: MetalIndex) -> Via:
     connections = via_gds_layer_connections[none_check(via.gds_layer)]
-    top_layer = connections.end
+    top_layer = connections.top_metal_index
     bottom_layer = get_via_bottom_connection_layer(via, connections, metal_index)
     return via.with_layers(bottom=bottom_layer, top=top_layer)
 
 
-def get_via_bottom_connection_layer(via: Via, connections: ViaLayerConnections, metal_index: MetalIndex) -> int:
-    if connections.far_start is None:
+def get_via_bottom_connection_layer(via: Via, connections: ViaLayerMapping, metal_index: MetalIndex) -> int:
+    if connections.bottom_metal_index == connections.top_metal_index - 1:
         # Simple case: The via layer only spans one layer, so the bottom connection must be one layer below it.
-        return connections.close_start
+        return connections.bottom_metal_index
     else:
-        # Complex case: The via gds layer spans two layers so this specific via can be connected either one layer down or two layers down.
+        # Complex case: The via gds layer spans two layers so this specific via can be connected to any of the metals below it.
 
-        # Choose the one that the via intersects MORE with.
-        close_metals = metal_index[connections.close_start]
-        far_metals = metal_index[connections.far_start]
-        close_intersection = via_intersection_area(via, close_metals)
-        far_intersection = via_intersection_area(via, far_metals)
+        # See if the via hits a metal in the highest layer, then travel further down.
+        for lower_layer in range(connections.top_metal_index - 1, connections.bottom_metal_index - 1, -1):
+            metals = metal_index[lower_layer]
+            if via_intersects(via, metals):
+                return lower_layer
+        
+        raise AssertionError(f"Could not find any metal that the via {via} is supposed to hit between layers {connections.top_metal_index - 1} and {connections.bottom_metal_index}")
+        # # Choose the one that the via intersects MORE with.
+        # close_metals = metal_index[connections.bottom_metal_index]
+        # far_metals = metal_index[connections.far_start]
+        # close_intersection = via_intersection_area(via, close_metals)
+        # far_intersection = via_intersection_area(via, far_metals)
 
-        assert close_intersection > 0 or far_intersection > 0, f"According to previous analysis, the via {via} should be connected to either metal layer {connections.close_start} or {connections.far_start}, but it seems to be connected to none of them."
+        # assert close_intersection > 0 or far_intersection > 0, f"According to previous analysis, the via {via} should be connected to either metal layer {connections.close_start} or {connections.far_start}, but it seems to be connected to none of them."
 
-        if close_intersection > far_intersection:
-            return connections.close_start
-        else:
-            return connections.far_start
+        # if close_intersection > far_intersection:
+        #     return connections.close_start
+        # else:
+        #     return connections.far_start
 
 
-def via_intersection_area(via: Via, metals: STRtree) -> float:
+# def via_intersection_area(via: Via, metals: STRtree) -> float:
+#     as_polygon = to_shapely_polygon(via.vertices)
+#     # This step is very important as it vastly reduces the amount of intersection checks we need to do, essentially making this operation O(1) instead of O(n)
+#     candidates = metals.query(as_polygon)
+#     intersections = [as_polygon.intersection(cast(Polygon, metals.geometries[candidate])) for candidate in candidates]
+#     return sum_of(intersections, key=lambda intersection: intersection.area)
+
+def via_intersects(via: Via, metals: STRtree) -> bool:
     as_polygon = to_shapely_polygon(via.vertices)
     # This step is very important as it vastly reduces the amount of intersection checks we need to do, essentially making this operation O(1) instead of O(n)
     candidates = metals.query(as_polygon)
-    intersections = [as_polygon.intersection(cast(Polygon, metals.geometries[candidate])) for candidate in candidates]
-    return sum_of(intersections, key=lambda intersection: intersection.area)
+    return any([as_polygon.intersects(cast(Polygon, metals.geometries[candidate])) for candidate in candidates])
 
 
-@dataclass
-class ConnectionEnd:
-    via_gds_layer: int
-    metal_start_gds_layer_close: int
-    metal_start_gds_layer_far: Optional[int]
 
+# MetalIndex = dict[int, STRtree]
 
-def count_layers(connections: Iterable[ConnectionEnd]) -> int:
+def index_metals_by_layer(metals: list[Metal]) -> MetalIndex:
     """
-    Count how many total layers we have to set the max index. 
-    if we have 'double layers' with a metal_start_gds_layer_far value set, they will span 2 layers so we need to take that into account. 
-    """
-    layers = 0
-    for connection in connections:
-        if connection.metal_start_gds_layer_far is None:
-            layers += 1
-        else:
-            layers += 2
-    return layers
-
-
-def order_layers(via_to_metal_layers: dict[int, ViaLayerConnections]) -> OrderLayersResult:
-    """
-    Returns a map from the METAL gds_layers to the actual 0-indexed layers,
-    and from the VIA gds_layers to the actual 0-indexed layers, the via ends at (the top part).
-    :param via_to_metal_layers A map calculated in the previous step, that assigns every via the metal layers it is connected to.
-    """
-    # 1. Find out where the start and end are
-    current = find_highest_layer(via_to_metal_layers)
-
-    # 2. Graph like, start from the highest layer at index n-1, and go down finding metals below it by following via connections.
-    metal_connections: dict[int, ConnectionEnd] = {
-        connections.end: ConnectionEnd(
-            via_gds_layer=via, metal_start_gds_layer_close=connections.close_start, metal_start_gds_layer_far=connections.far_start
-        ) for via, connections in via_to_metal_layers.items()
-    }
-
-    metal_gds_layer_to_layer: dict[int, int] = {}
-    via_gds_layer_to_layer: dict[int, ViaLayerConnections] = {}
-    layer_count = count_layers(metal_connections.values())
-    # Start from the ending index
-    layer_index = layer_count - 1
-    while current in metal_connections:
-        connection_end = metal_connections[current]
-        # The top layer index is assigned to the metal
-        metal_gds_layer_to_layer[current] = layer_index
-
-        if connection_end.metal_start_gds_layer_far is not None:
-            # Case 1: This is a double via layer. We need to assign a layer to the close metal layer and skip two layers down.
-
-            # Assign layer to close metal layer
-            metal_gds_layer_to_layer[connection_end.metal_start_gds_layer_close] = layer_index - 1
-
-            # Associate the via gds_layer with the physical via layers it is associated it.
-            # Obviously, it will just be consecutive indices.
-            via_gds_layer_to_layer[connection_end.via_gds_layer] = ViaLayerConnections(
-                close_start=layer_index - 1,
-                far_start=layer_index-2,
-                end=layer_index
-            )
-
-            # Mark we are going two layers down, traveling through the graph
-            layer_index -= 2
-            current = connection_end.metal_start_gds_layer_far
-        else:
-            # Case 2: This is a single-layer via
-
-            # Associate the via gds_layer with the physical via layers it is associated it.
-            # This time there is no 'far start' because it's just one layer this via layer is spanning.
-            via_gds_layer_to_layer[connection_end.via_gds_layer] = ViaLayerConnections(
-                close_start=layer_index - 1,
-                far_start=None,
-                end=layer_index
-            )
-
-            # Mark we are going one layer down, traveling through the graph
-            layer_index -= 1
-            current = connection_end.metal_start_gds_layer_close
-
-    assert layer_index == 0, f"Didn't end at the bottom index 0, instead ended at {layer_index}."
-
-    # Add the highest layer mapping, since the loop stops before running on the last element.
-    metal_gds_layer_to_layer[current] = layer_index
-
-    gds_layer_mapping_count = len(metal_gds_layer_to_layer)
-    # count_layers = len(via_to_metal_layers) + 1
-    if gds_layer_mapping_count != layer_count:
-        all_metal_gds_layers = {metal_layer for connection in via_to_metal_layers.values() for metal_layer in connection.all_connections()}
-        missing_mappings = [layer for layer in all_metal_gds_layers if layer not in metal_gds_layer_to_layer]
-        assert False, (f"There isn't a proper layer mapping for every gds_layer (expected {count_layers}, got {gds_layer_mapping_count})."
-                       f"Layers without mappings: {missing_mappings}. All mappings: {metal_gds_layer_to_layer}.")
-
-    return OrderLayersResult(metal_gds_layer_to_layer, via_gds_layer_to_layer)
-
-
-
-
-def find_highest_layer(via_to_metal_layers: dict[int, ViaLayerConnections]) -> int:
-    # Metal layer is connected to one via layer - it's a start or end.
-    # Metal layer is connected to two via layers - it's a middle point
-    # Metal layer is connected to more than two via layers - that's a contradication, throw an error.
-    connection_count: dict[int, int] = {}
-
-    # Count connections to vias
-    for connections in via_to_metal_layers.values():
-        start_a = connections.close_start
-        start_b = connections.far_start
-        end = connections.end
-        connection_count[start_a] = connection_count.get(start_a, 0) + 1
-        if start_b != None:
-            connection_count[start_b] = connection_count.get(start_b, 0) + 1
-        connection_count[end] = connection_count.get(end, 0) + 1
-
-    for layer, connections in connection_count.items():
-        assert connections <= 2, f"The metal layer {layer} seems to be connected to {connections} Via layers, but physically it can only be connected to up to two."
-
-    # Metal layer is connected to one via layer - it's a start or end.
-    edges = {layer: count for layer, count in connection_count.items() if count == 1}
-
-    edge_count = len(edges)
-    assert edge_count != 0, "Cannot find any metal layers connected to exactly one via layer, to serve as the edge layers."
-    assert edge_count != 1, f"Could only find one metal layer ({edges[0]}) to serve as an edge, but two are expected."
-    assert edge_count <= 3, f"Too many metal layers ({edge_count} instead of 2 or 3) connect to exactly one via layer, making them potential edge layers: {edges}"
-
-    # By calling max(), we implicitly decide that a lower gds_layer means that it is the lowest layer, and a higher gds_layer means it is the highest layer.
-    return max(edges.keys())
-
-
-def get_via_layer_connected_metal_layers(via_layer: int, vias: list[Via], index: MetalIndex) -> ViaLayerConnections:
-    """Returns the two gds_layers that this via layer is connected to, by filtering through metal layers that actually have metals in the via points."""
-    # Only get metals that actually connect to all vias, which implies those metals are above/below the via.
-    possible_metal_layers = sorted([layer for layer in index.keys() if all_vias_touch_metals(vias, index[layer])])
-
-    if len(possible_metal_layers) == 2:
-        # Case 1: The simple case. The via layer connects a single metal layer to a single metal layer above it.
-        # In this case all vias must touch a metal in both layers.
-        return ViaLayerConnections(close_start=possible_metal_layers[0], end=possible_metal_layers[1], far_start=None)
-    elif len(possible_metal_layers) == 1:
-        top_layer = possible_metal_layers[0]
-        # Case 2: The via layer connects up to a single upper layer, and connects down to two different metal layers below it.
-        # This can happen when the lower layer is diffusion, and in that case extra long vias are sometimes connected from the diffusion
-        # To a metal layer 2 layers above it.
-        other_layers = [layer for layer in index.keys() if layer != top_layer]
-        other_pairs = itertools.combinations(other_layers, 2)
-        # Try to fit all pairs of layers as the pair that is connected to the bottom of this via layer
-        matching_layer_pairs = [pair for pair in other_pairs if all_vias_touch_metals_in_either(vias, index[pair[0]], index[pair[1]])]
-        assert len(
-            matching_layer_pairs) == 1, f"Expected only one pair to match as the bottom layer connected to layer {top_layer} with via {via_layer}, got: {matching_layer_pairs}"
-        # By sorting like this, we imply if the layer number is far from the top layer number, then it is physically farther away.
-        close_start, far_start = sorted(list(matching_layer_pairs[0]), key=lambda layer: abs(top_layer - layer))
-        return ViaLayerConnections(
-            close_start=close_start,
-            far_start=far_start,
-            end=top_layer
-        )
-    else:
-        if len(possible_metal_layers) > 2:
-            raise AssertionError(f"More than two possible metal layers could be connected to via layer {via_layer}: {possible_metal_layers}.\
-        All of the vias on that level hit metals in all layers equally ({len(vias)} times).")
-        else:
-            raise AssertionError(f"Cannot find any metal layers that match via connections of layer {via_layer}.")
-
-
-def all_vias_touch_metals(vias: list[Via], metals: STRtree) -> bool:
-    return all(via_touches_any_metal(via, metals) for via in vias)
-
-
-def all_vias_touch_metals_in_either(vias: list[Via], metalsA: STRtree, metalsB: STRtree) -> bool:
-    """
-    Checks if all vias in the list touch a metal in either STRtree of metals.
-    """
-    return all(via_touches_any_metal(via, metalsA) or via_touches_any_metal(via, metalsB) for via in vias)
-
-
-def via_touches_any_metal(via: Via, metals: STRtree) -> bool:
-    as_polygon = to_shapely_polygon(via.vertices)
-    # This step is very important as it vastly reduces the amount of intersection checks we need to do, essentially making this operation O(1) instead of O(n)
-    candidates = metals.query(as_polygon)
-
-    return any(as_polygon.intersects(metals.geometries[candidate]) for candidate in candidates)
-
-
-def index_vias_by_gds_layer(layout: Layout) -> ViaIndex:
-    """
-    Returns a map of vias by gds_layer. 
+    Returns a map of metals by gds_layer. 
+    The layers are indexed in STRtrees for fast access
     """
 
     # Organize polygons by layer
-    via_index: dict[int, list[Via]] = {}
-    for via in layout.vias:
-        layer = none_check(via.gds_layer)
-        existing_list = via_index.get(layer, None)
+    polygon_list_index: dict[int, list[Polygon]] = {}
+    for metal in metals:
+        layer = none_check(metal.layer)
+        existing_list = polygon_list_index.get(layer, None)
+        polygon = to_shapely_polygon(metal.polygon)
         if existing_list is None:
             # No polygons in layer - add a new list for layer
-            via_index[layer] = [via]
+            polygon_list_index[layer] = [polygon]
         else:
             # Existing polygons in layer - add to list
-            existing_list.append(via)
+            existing_list.append(polygon)
 
     # Optimize layers into STRtrees
-    return via_index
+    tree_index: dict[int, STRtree] = {layer: STRtree(polygons) for layer, polygons in polygon_list_index.items()}
+    return tree_index
+
+

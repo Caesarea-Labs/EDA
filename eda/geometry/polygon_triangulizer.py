@@ -107,4 +107,6 @@ def polygon_to_mesh(polygon: ExtrudedPolygon) -> AnnotatedMesh:
     # plt.triplot(triangulation['vertices'][:, 0], triangulation['vertices'][:, 1], triangulation['triangles'])
     # plt.show()
 
-    return AnnotatedMesh(output_vertices, output_triangles, color=polygon.color, alpha=polygon.alpha, name=polygon.name, group_name=polygon.group_name)
+    return AnnotatedMesh(
+        output_vertices, output_triangles, color=polygon.color, alpha=polygon.alpha, name=polygon.name, group_name=polygon.group_name
+        )
