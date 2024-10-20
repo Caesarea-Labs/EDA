@@ -77,7 +77,6 @@ def test_intersections_correctness():
             algorithm_result = algorithm(polys, rect)
             assert equals_roughly(baseline, algorithm_result), f"Algorithm {algorithm} produced an incorrect result: {algorithm_result} instead of {baseline}. Rect: {poly_to_string(rect)}, Polys: {[poly_to_string(poly) for poly in polys]}"
 
-    # test_intersection_area_algorithm(shapely_intersect_area_union)
     test_intersection_area_algorithm(shapely_intersect_area_sum)
     test_intersection_area_algorithm(shapely_intersect_area_sum_no_intersects)
 

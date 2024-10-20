@@ -1,6 +1,8 @@
 from eda.layout import Layout, Via, Rect2D
 from eda.Shapes import L_shape, lamed_shape, rect_shape
-# from .plotly_layout import plotly_plot_layout
+from eda.ui.pyvista_gui import plot_layout_with_qt_gui
+
+
 
 shape = lamed_shape(1.1, 3, 2, 2)
 test_layout_const = Layout(metals=[
@@ -40,67 +42,85 @@ test_layout_const = Layout(metals=[
     vias=[
     Via(
         bottom_layer=0,
+        top_layer=1,
         rect=Rect2D(x_start=3, x_end=5, y_start=4, y_end=6),
         name="a"
     ),
     Via(
         bottom_layer=0,
+        top_layer=1,
         rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
         name="b1"
     ),
     Via(
         bottom_layer=1,
+        top_layer=2,
         rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
         name="b2"
     ),
     Via(
         bottom_layer=2,
+        top_layer=3,
         rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
         name="b3"
     ),
     Via(
         bottom_layer=3,
+        top_layer=4,
         rect=Rect2D(x_start=6, x_end=7, y_start=8, y_end=9),
         name="b4"
     ),
     Via(
         bottom_layer=1,
+        top_layer=2,
         rect=Rect2D(x_start=4, x_end=5, y_start=5, y_end=6),
         name="c1"
     ),
     Via(
         bottom_layer=2,
+        top_layer=3,
         rect=Rect2D(x_start=4, x_end=5, y_start=5, y_end=6),
         name="c2"
     ),
     Via(
         bottom_layer=3,
+        top_layer=4,
         rect=Rect2D(x_start=4, x_end=5, y_start=5, y_end=6),
         name="c3"
     ),
     Via(
         bottom_layer=1,
+        top_layer=2,
         rect=Rect2D(x_start=10, x_end=12, y_start=10, y_end=11),
         name="d1"
     ),
     Via(
         bottom_layer=2,
+        top_layer=3,
         rect=Rect2D(x_start=10, x_end=12, y_start=10, y_end=11),
         name="d2"
     ),
     Via(
         bottom_layer=2,
+        top_layer=3,
         rect=Rect2D(x_start=1, x_end=2, y_start=6, y_end=8),
         name="e"
     ),
     Via(
         bottom_layer=2,
+        top_layer=3,
         rect=Rect2D(x_start=1, x_end=2, y_start=3, y_end=4),
         name="f"
     ),
-    Via(bottom_layer=0, rect=Rect2D(x_start=14, x_end=15, y_start=1, y_end=3), name="v0"),
-    Via(bottom_layer=1, rect=Rect2D(x_start=14, x_end=15, y_start=5, y_end=7), name="v1"),
-    Via(bottom_layer=2, rect=Rect2D(x_start=14, x_end=15, y_start=9, y_end=11), name="v2"),
-    Via(bottom_layer=3, rect=Rect2D(x_start=14, x_end=15, y_start=13, y_end=15), name="v3"),
+    Via(bottom_layer=0, 
+        top_layer=1,rect=Rect2D(x_start=14, x_end=15, y_start=1, y_end=3), name="v0"),
+    Via(bottom_layer=1, 
+        top_layer=2,rect=Rect2D(x_start=14, x_end=15, y_start=5, y_end=7), name="v1"),
+    Via(bottom_layer=2, 
+        top_layer=3,rect=Rect2D(x_start=14, x_end=15, y_start=9, y_end=11), name="v2"),
+    Via(bottom_layer=3,
+        top_layer=4, rect=Rect2D(x_start=14, x_end=15, y_start=13, y_end=15), name="v3"),
 ]
 )
+def test_test_layout():
+    plot_layout_with_qt_gui(test_layout_const)

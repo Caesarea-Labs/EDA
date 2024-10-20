@@ -38,7 +38,7 @@ def add_layout_elements_to_plot(layout: Layout, show_text: bool, plotter: pv.Plo
     for via in layout.vias:
         polygon = ExtrudedPolygon(
             z_base=none_check(via.bottom_layer) if not via.mark else 0,
-            z_top=none_check(via.top_layer),
+            z_top=none_check(via.top_layer, f"Missing top_layer value for via (bottom_layer is specified: {via.bottom_layer})"),
             color="red" if via.mark else "black",
             vertices=via.rect.as_polygon(),
             alpha=0.3,

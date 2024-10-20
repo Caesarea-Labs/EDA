@@ -33,6 +33,9 @@ def triangulate_polygon(polygon: Polygon2D) -> Mesh2D:
 
 
 def to_shapely_polygon(polygon: Polygon2D) -> ShapelyPolygon:
+    """
+    Convert 2d points to a form supported by shapely
+    """
     return ShapelyPolygon([(point.x, point.y) for point in polygon])
 
 
@@ -50,6 +53,10 @@ class PolygonIndex(Generic[T]):
     polygon_getter: Callable[[T], Polygon2D]
 
     def __init__(self, items: list[T], polygon_getter: Callable[[T], Polygon2D]) -> None:
+        """
+        :param items: A list of items, each item associated with exactly one polygon
+        :param polygon_getter: A function to get the polygon associated with every item. 
+        """
         self.items = items
         self.shapely_polygons = [to_shapely_polygon(polygon_getter(item)) for item in items]
         self.tree = STRtree(self.shapely_polygons)
@@ -65,6 +72,8 @@ class PolygonIndex(Generic[T]):
         indices = [index for index in candidates if polygon.intersects(self.shapely_polygons[index])]
 
         return [self.items[i] for i in indices]
+    
+    
 
     # def get_intersection(self, polygon: ShapelyPolygon) -> BaseGeometry:
     #     """

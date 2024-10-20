@@ -4,6 +4,8 @@ from typing import Optional, Iterator
 
 from shapely import Polygon, STRtree
 
+from eda.geometry.geometry_utils import to_shapely_polygon
+
 from .geometry.geometry import Point2D, Polygon2D, Rect2D
 from .utils import max_of, min_of, none_check
 
@@ -177,8 +179,3 @@ def index_metals_by_gds_layer(layout: Layout) -> MetalIndex:
     return tree_index
 
 
-def to_shapely_polygon(vertices: list[Point2D]) -> Polygon:
-    """
-    Convert 2d points to a form supported by shapely
-    """
-    return Polygon([(x, y) for x, y in vertices])
