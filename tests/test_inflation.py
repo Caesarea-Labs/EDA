@@ -7,6 +7,7 @@ from eda.utils import none_check
 from .test_layout import test_layout_const
 
 
+
 def test_simple_inflation():
     mapping = build_gds_layer_mapping(
         metal_gds_layer_order=[10,11,12,13,14],
